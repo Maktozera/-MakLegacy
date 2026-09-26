@@ -228,6 +228,26 @@ details.anteriores summary{cursor:pointer;color:var(--muted);margin-bottom:1rem}
 .perigo-borda{border-color:var(--danger);color:var(--danger)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
+/* Administrador e grupos da matriz */
+.tag-admin{display:inline-block;font-size:.75rem;font-weight:700;padding:.05em .55em;border-radius:99px;border:1px solid var(--gold);color:var(--gold);vertical-align:middle}
+.matriz tr.grupo th{position:sticky;left:0;background:var(--surface-2);color:var(--muted);font-weight:500;font-size:.88rem;padding:.45rem .9rem;text-align:left}
+
+/* Discord */
+.btn-discord{background:#5865f2;color:#fff;border:0;border-radius:8px;padding:.55em 1.1em;font-weight:700;width:100%}
+.btn-discord:hover{filter:brightness(1.1)}
+.bloco .btn-discord,.linha .btn-discord{width:auto}
+.ou{display:flex;align-items:center;gap:.8rem;color:var(--muted);font-size:.9rem;margin:1rem 0}
+.ou::before,.ou::after{content:"";flex:1;border-top:1px solid var(--line)}
+.dc{display:inline-grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;font-weight:700;font-size:.9rem;background:var(--surface-2);color:var(--muted)}
+.dc.dc-ok{background:color-mix(in srgb,var(--ok) 22%,var(--surface));color:var(--ok)}
+.dc.dc-fora{background:color-mix(in srgb,var(--danger) 22%,var(--surface));color:var(--danger)}
+.dc-linha{display:inline-flex;align-items:center;gap:.4rem;font-size:.92rem;color:var(--muted)}
+.dc-linha .dc{width:1.3rem;height:1.3rem;font-size:.75rem}
+.dc-conta{display:flex;align-items:center;gap:1rem}
+.dc-conta img{border-radius:50%}
+label.check{flex-direction:row;align-items:center;gap:.6rem;font-weight:400}
+label.check input{width:1.2rem;height:1.2rem;accent-color:var(--gold)}
+
 /* Modal e toast */
 dialog{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:1.4rem;width:min(560px,calc(100% - 2rem));max-height:calc(100% - 2rem)}
 dialog::backdrop{background:rgba(10,12,24,.65)}
@@ -258,9 +278,12 @@ dl.ficha dd{margin:0;white-space:pre-line;word-break:break-word}
 //  (Project Settings > API: "Project URL" e "anon public key")
 // =====================================================================
 const CONFIG = {
-  SUPABASE_URL: 'https://tkjpprrokafysrxfbxhi.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRranBwcnJva2FmeXNyeGZieGhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MzA3MjgsImV4cCI6MjEwNjAwNjcyOH0.SC5e8q6gSdRXCHdyLE7ROlXIoBfCqhPOffiDIof39yc',
-  NOME_GUILD: 'LEGACY'
+  SUPABASE_URL: 'https://SEU-PROJETO.supabase.co',
+  SUPABASE_ANON_KEY: 'SUA-ANON-KEY',
+  NOME_GUILD: 'Minha Guild',
+  // true = também permite criar conta e entrar com email e senha
+  // false = só entra pelo Discord (recomendado se o Discord é obrigatório na guild)
+  LOGIN_EMAIL: false
 };
 
 const CORES_ARVORE = {
@@ -270,7 +293,13 @@ const CORES_ARVORE = {
 const FUNCOES = { tank:'Tank', dps:'DPS', suporte:'Suporte', utilidade:'Utilidade' };
 const CORES_FUNCAO = { tank:'#e0625a', dps:'#e7b54f', suporte:'#7ec8f2', utilidade:'#a88bff' };
 const STATUS = { ativo:'Ativo', pendente:'Pendente', inativo:'Inativo', recusado:'Recusado' };
-// Permissões que podem ser ligadas/desligadas por cargo (o Líder tem todas)
+// O que cada cargo pode ver no site
+const ACESSOS = [
+  ['ver_painel',  'Painel',   'Ver o painel com a composição da guild'],
+  ['ver_membros', 'Membros',  'Ver a lista completa de membros, com contatos e fichas'],
+  ['ver_pts',     'PTs',      'Ver as PTs e entrar ou sair delas']
+];
+// O que cada cargo pode fazer na gestão (administradores do site têm tudo)
 const PERMISSOES = [
   ['aprovar_membros',   'Aprovar cadastros',          'Aceitar ou recusar quem pediu para entrar'],
   ['gerenciar_status',  'Ativar e inativar membros',  'Tirar alguém da guild ou trazer de volta'],
@@ -286,7 +315,8 @@ const ETAPAS = { 1:'1ª classe', 2:'2ª classe', 3:'Trans', 4:'Avançada' };
 const configurado = !CONFIG.SUPABASE_URL.includes('SEU-PROJETO');
 const sb = configurado ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
 
-const S = { user:null, eu:null, classes:[], cargos:[], membros:[], parties:[], pm:[], recuperando:false, canal:null,
+const S = { user:null, eu:null, classes:[], cargos:[], membros:[], parties:[], pm:[], recuperando:false, canal:null, admins:[],
+            config:null, discordSync:null, sincronizando:false,
             filtroCtl:{ q:'', status:'', cargo:'' } };
 const app = document.getElementById('app');
 const modal = document.getElementById('modal');
@@ -294,24 +324,41 @@ const modal = document.getElementById('modal');
 // ---------- utilitários ----------
 const $ = (s, el = document) => el.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const isLider = () => S.eu?.status === 'ativo' && S.eu.cargo === 'lider';
+const isAdminId = id => S.admins.includes(id);
+const isAdmin = () => !!S.eu && isAdminId(S.eu.id);
 const cargoDe = id => S.cargos.find(c => c.id === id);
 const nomeCargo = id => cargoDe(id)?.nome || id;
 const rank = id => cargoDe(id)?.ordem ?? 999;
-const pode = p => S.eu?.status === 'ativo' && (S.eu.cargo === 'lider' || (cargoDe(S.eu.cargo)?.permissoes || []).includes(p));
-const temPainel = () => isLider() || PERMISSOES.some(([p]) => pode(p));
+const pode = p => isAdmin() || (S.eu?.status === 'ativo' && (cargoDe(S.eu.cargo)?.permissoes || []).includes(p));
+const temPainel = () => isAdmin() || PERMISSOES.some(([p]) => pode(p));
+const verPts = () => pode('ver_pts') || pode('gerenciar_pts');
 // posso agir sobre esse membro? (precisa estar acima dele na hierarquia)
-const acimaDe = m => m.id !== S.eu.id && (isLider() || rank(S.eu.cargo) < rank(m.cargo));
+const acimaDe = m => m.id !== S.eu.id && (isAdmin() || (!isAdminId(m.id) && rank(S.eu.cargo) < rank(m.cargo)));
 const ocupados = id => S.membros.filter(m => m.cargo === id && m.status === 'ativo').length;
 const cargosOrdenados = () => [...S.cargos].sort((a, b) => a.ordem - b.ordem);
-const podeCargo = m => pode('atribuir_cargos') && acimaDe(m) && m.cargo !== 'lider';
+const podeCargo = m => pode('atribuir_cargos') && (acimaDe(m) || (isAdmin() && m.id === S.eu.id));
 const podeEditar = m => pode('editar_membros') && acimaDe(m);
 const podeStatus = m => acimaDe(m) && (m.status === 'pendente' ? pode('aprovar_membros') : pode('gerenciar_status'));
 function opcoesCargo(m) {
-  return cargosOrdenados().filter(c => c.id !== 'lider' && (isLider() || c.ordem > rank(S.eu.cargo))).map(c => {
+  return cargosOrdenados().filter(c => isAdmin() || c.ordem > rank(S.eu.cargo)).map(c => {
     const n = ocupados(c.id), cheio = c.limite && n >= c.limite && m.cargo !== c.id;
     return `<option value="${esc(c.id)}" ${m.cargo === c.id ? 'selected' : ''} ${cheio ? 'disabled' : ''}>${esc(c.nome)}${c.limite ? ` (${n}/${c.limite})` : ''}</option>`;
   }).join('');
+}
+const gereMembros = () => ['aprovar_membros','gerenciar_status','atribuir_cargos','editar_membros'].some(pode);
+// Situação do membro no Discord da guild
+function discordStatus(m) {
+  if (!m.discord_id) return { cls:'dc-sem', icone:'–', texto:'Discord não conectado' };
+  if (m.discord_no_servidor === true) return { cls:'dc-ok', icone:'✓', texto:'No servidor da guild' };
+  if (m.discord_no_servidor === false) return { cls:'dc-fora', icone:'✗', texto:'Fora do servidor da guild' };
+  return { cls:'dc-sem', icone:'?', texto:'Ainda não verificado' };
+}
+const discordBadge = m => { const d = discordStatus(m); return `<span class="dc ${d.cls}" title="${d.texto}">${d.icone}<span class="sr">${d.texto}</span></span>`; };
+const discordLinha = m => { const d = discordStatus(m); return `<span class="dc-linha ${d.cls}"><span class="dc ${d.cls}" aria-hidden="true">${d.icone}</span>${m.discord_usuario ? `@${esc(m.discord_usuario)}, ` : ''}${d.texto.charAt(0).toLowerCase() + d.texto.slice(1)}</span>`; };
+async function entrarComDiscord(vincular = false) {
+  const opcoes = { provider: 'discord', options: { redirectTo: urlBase() } };
+  const { error } = vincular ? await sb.auth.linkIdentity(opcoes) : await sb.auth.signInWithOAuth(opcoes);
+  if (error) toast(/manual linking/i.test(error.message) ? 'A conexão de contas está desligada no Supabase (Allow manual linking).' : msgErro(error), true);
 }
 const slug = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'cargo';
 const classeDe = id => S.classes.find(c => c.id === id);
@@ -337,6 +384,9 @@ function msgErro(e) {
   if (/at least 6/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
   if (/rate limit|too many/i.test(m)) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
   if (/Failed to fetch/i.test(m)) return 'Sem conexão com o servidor. Verifique sua internet.';
+  if (/link is invalid or has expired/i.test(m)) return 'Esse link expirou ou já foi usado. Entre com email e senha, ou peça um link novo.';
+  if (/Identity is already linked/i.test(m)) return 'Essa conta do Discord já está conectada a outro cadastro.';
+  if (/provider is not enabled/i.test(m)) return 'O login com Discord ainda não foi ligado no Supabase.';
   return m;
 }
 async function tentar(fn, ok) {
@@ -360,6 +410,7 @@ function classeHTML(m) {
 //  AUTENTICAÇÃO
 // =====================================================================
 function telaAuth(modo = 'entrar', aviso = '', erro = false) {
+  if (!CONFIG.LOGIN_EMAIL && ['entrar','cadastrar','recuperar'].includes(modo)) return telaDiscord(aviso, erro);
   const abas = modo === 'entrar' || modo === 'cadastrar';
   const campos = {
     entrar: `
@@ -395,10 +446,13 @@ function telaAuth(modo = 'entrar', aviso = '', erro = false) {
       </div>` : `<h3 style="margin-bottom:1rem">${titulos[modo]}</h3>`}
       ${aviso ? `<p class="aviso ${erro ? 'erro' : ''}">${aviso}</p>` : ''}
       <form id="f-auth" novalidate>${campos[modo]}</form>
+      ${abas ? `<div class="ou"><span>ou</span></div>
+      <button type="button" class="btn-discord" id="btn-discord">${modo === 'cadastrar' ? 'Criar conta com Discord' : 'Entrar com Discord'}</button>` : ''}
     </div>
   </div></div>`;
 
   app.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => telaAuth(b.dataset.modo));
+  $('#btn-discord')?.addEventListener('click', () => entrarComDiscord(false));
   const f = $('#f-auth');
   f.onsubmit = async ev => {
     ev.preventDefault();
@@ -438,6 +492,20 @@ function telaAuth(modo = 'entrar', aviso = '', erro = false) {
   };
 }
 
+function telaDiscord(aviso = '', erro = false) {
+  app.innerHTML = `
+  <div class="auth"><div class="auth-box">
+    <div class="auth-marca"><h1>${esc(CONFIG.NOME_GUILD)}</h1><p>Organização da guild em Ragnarok Origin Classic</p></div>
+    <div class="auth-card">
+      ${aviso ? `<p class="aviso ${erro ? 'erro' : ''}">${aviso}</p>` : ''}
+      <p style="margin-top:0">Entre com a conta do Discord que você usa no servidor da guild. Se for sua primeira vez, sua conta é criada na hora.</p>
+      <button type="button" class="btn-discord" id="btn-discord">Entrar com Discord</button>
+      <p class="muted" style="margin:1rem 0 0;font-size:.9rem">Depois do primeiro acesso, um líder ou oficial precisa aprovar sua entrada.</p>
+    </div>
+  </div></div>`;
+  $('#btn-discord').onclick = () => entrarComDiscord(false);
+}
+
 async function sair() {
   if (S.canal) { sb.removeChannel(S.canal); S.canal = null; }
   await sb.auth.signOut();
@@ -454,16 +522,28 @@ async function carregarClasses() {
   if (c.error) throw c.error;
   if (g.error) throw new Error('Tabela de cargos não encontrada. Rode o arquivo migracao-cargos.sql no Supabase.');
   S.classes = c.data; S.cargos = g.data;
+  const [cfg, ad] = await Promise.all([
+    sb.from('config_guild').select('*').eq('id', 1).maybeSingle(),
+    sb.from('admins').select('user_id')
+  ]);
+  S.config = cfg.error ? null : cfg.data;
+  S.admins = ad.error ? [] : ad.data.map(x => x.user_id);
 }
 async function carregarTudo() {
-  const [m, p, pm] = await Promise.all([
-    sb.from('membros').select('*').order('nick'),
-    sb.from('parties').select('*').order('quando', { ascending: true, nullsFirst: false }),
-    sb.from('party_membros').select('*').order('entrou_em')
+  const completo = pode('ver_membros') || gereMembros();
+  const pts = verPts();
+  const vazio = Promise.resolve({ data: [], error: null });
+  const [m, eu, p, pm] = await Promise.all([
+    completo ? sb.from('membros').select('*').order('nick') : sb.rpc('membros_publicos'),
+    sb.from('membros').select('*').eq('id', S.user.id).single(),
+    pts ? sb.from('parties').select('*').order('quando', { ascending: true, nullsFirst: false }) : vazio,
+    pts ? sb.from('party_membros').select('*').order('entrou_em') : vazio
   ]);
-  for (const r of [m, p, pm]) if (r.error) throw r.error;
-  S.membros = m.data; S.parties = p.data; S.pm = pm.data;
-  S.eu = S.membros.find(x => x.id === S.user.id) || S.eu;
+  for (const r of [m, eu, p, pm]) if (r.error) throw r.error;
+  S.eu = eu.data;
+  S.membros = m.data.filter(x => x.id !== eu.data.id).concat(eu.data)
+    .sort((x, y) => x.nick.localeCompare(y.nick, 'pt-BR'));
+  S.parties = p.data; S.pm = pm.data;
 }
 async function recarregar() {
   await tentar(async () => {
@@ -525,6 +605,7 @@ function telaStatus() {
       ${pend
         ? `<p class="aviso">Sua conta está aguardando aprovação de um líder ou oficial. Enquanto isso, preencha seu perfil.</p>`
         : `<p class="aviso erro">Sua conta está ${S.eu.status === 'recusado' ? 'recusada' : 'inativa'}. Fale com a liderança da guild.</p>`}
+      ${pend && !S.eu.discord_id ? `<div class="linha" style="margin-bottom:1rem"><span class="muted">Conecte seu Discord para agilizar a aprovação.</span><span class="acoes"><button class="btn-discord" id="conectar-discord" type="button">Conectar Discord</button></span></div>` : ''}
       ${pend ? formPerfilHTML(S.eu) : ''}
       <div class="acoes" style="margin-top:1.2rem">
         <button class="btn-sec" id="verificar">Verificar aprovação</button>
@@ -535,6 +616,7 @@ function telaStatus() {
   $('#sair').onclick = sair;
   $('#verificar').onclick = entrarNoApp;
   if (pend) ligarPerfil(S.eu.id, () => {});
+  $('#conectar-discord')?.addEventListener('click', () => entrarComDiscord(true));
 }
 
 // =====================================================================
@@ -555,21 +637,24 @@ function atualizarNav() {
   const nav = $('#nav'); if (!nav) return;
   const pend = pode('aprovar_membros') ? S.membros.filter(m => m.status === 'pendente').length : 0;
   nav.innerHTML = `
-    <a href="#painel">Painel</a><a href="#membros">Membros</a><a href="#pts">PTs</a><a href="#perfil">Meu perfil</a>
+    ${pode('ver_painel') ? '<a href="#painel">Painel</a>' : ''}
+    ${pode('ver_membros') ? '<a href="#membros">Membros</a>' : ''}
+    ${verPts() ? '<a href="#pts">PTs</a>' : ''}
+    <a href="#perfil">Meu perfil</a>
     ${temPainel() ? `<a href="#controle">Painel de controle${pend ? `<span class="badge" aria-label="${pend} pendentes">${pend}</span>` : ''}</a>` : ''}`;
   $('#eu-nick').textContent = S.eu.nick;
   marcarNav();
 }
-function marcarNav() {
-  const r = (location.hash.slice(1) || 'painel').split('/')[0];
+function marcarNav(r = (location.hash.slice(1) || 'painel').split('/')[0]) {
   document.querySelectorAll('#nav a').forEach(a => a.getAttribute('href') === '#' + r ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
 }
 function rota() {
   const view = $('#view');
   if (!view || S.eu?.status !== 'ativo') return;
-  let [r, sub] = (location.hash.slice(1) || 'painel').split('/');
-  if (r === 'controle' && !temPainel()) r = 'painel';
-  marcarNav();
+  const permitido = { painel: () => pode('ver_painel'), membros: () => pode('ver_membros'), pts: verPts, perfil: () => true, controle: temPainel };
+  let [r, sub] = location.hash.slice(1).split('/');
+  if (!permitido[r]?.()) r = ['painel','membros','pts','perfil'].find(x => permitido[x]());
+  marcarNav(r);
   view.onclick = null; view.onchange = null;
   ({ painel:viewPainel, membros:viewMembros, pts:viewPts, perfil:viewPerfil, controle:viewControle }[r] || viewPainel)(view, sub);
 }
@@ -618,13 +703,13 @@ function viewPainel(view) {
         <li><span>${FUNCOES[f]}</span><span class="barra"><span style="--c:${CORES_FUNCAO[f]};width:${n / maxF * 100}%"></span></span><b>${n}</b></li>`).join('')}
       </ul>
     </section>
-    <section class="bloco">
+    ${verPts() ? `<section class="bloco">
       <h3>Próximas PTs</h3>
       ${proximas.length ? `<ul class="proximas">${proximas.map(p => {
         const n = S.pm.filter(x => x.party_id === p.id).length;
         return `<li><span><b>${esc(p.nome)}</b><br><small class="muted">${esc(p.tipo)}, ${fmtData(p.quando)}</small></span><span>${n}/${p.max_membros}</span></li>`;
       }).join('')}</ul>` : `<p class="muted" style="margin:0">Nenhuma PT agendada. <a href="#pts">Ver PTs</a></p>`}
-    </section>
+    </section>` : ''}
   </div>
 
   <section class="bloco" style="margin-top:1.2rem">
@@ -706,12 +791,13 @@ function modalMembro(id) {
       <button class="fechar" aria-label="Fechar" data-fechar>×</button>
     </div>
     <dl class="ficha">
-      <dt>Cargo</dt><dd>${esc(nomeCargo(m.cargo))}</dd>
+      <dt>Cargo</dt><dd>${esc(nomeCargo(m.cargo))}${isAdminId(m.id) ? ' <span class="tag-admin">Administrador do site</span>' : ''}</dd>
       <dt>Status</dt><dd>${STATUS[m.status]}</dd>
       <dt>Nível</dt><dd>${m.nivel ?? '-'}</dd>
       <dt>Poder</dt><dd>${numero(m.poder)}</dd>
       <dt>Função</dt><dd>${FUNCOES[funcaoDe(m)] || '-'}</dd>
-      <dt>Discord</dt><dd>${esc(m.discord) || '-'}</dd>
+      <dt>Discord</dt><dd>${m.discord_id ? discordLinha(m) : (esc(m.discord) || '-')}</dd>
+      ${m.discord_cargos?.length ? `<dt>Cargos no Discord</dt><dd>${m.discord_cargos.map(esc).join(', ')}</dd>` : ''}
       <dt>WhatsApp</dt><dd>${zap ? `<a href="https://wa.me/${zap.length <= 11 ? '55' + zap : zap}" target="_blank" rel="noopener">${esc(m.whatsapp)}</a>` : '-'}</dd>
       <dt>Disponibilidade</dt><dd>${esc(m.disponibilidade) || '-'}</dd>
       <dt>Observações</dt><dd>${esc(m.observacoes) || '-'}</dd>
@@ -768,7 +854,9 @@ function formPerfilHTML(m) {
     <label>Nível base<input name="nivel" type="number" min="1" max="999" value="${m.nivel ?? ''}"></label>
     <label>Poder (CP)<input name="poder" type="number" min="0" value="${m.poder ?? ''}"></label>
     <label>Função na PT<select name="funcao_preferida"><option value="">Padrão da classe</option>${Object.entries(FUNCOES).map(([k, v]) => `<option value="${k}" ${m.funcao_preferida === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
-    <label>Discord<input name="discord" maxlength="40" value="${esc(m.discord)}"></label>
+    ${m.discord_id
+      ? `<label>Discord<input value="@${esc(m.discord_usuario)}" disabled><small class="muted">Conectado pela conta do Discord</small></label>`
+      : `<label>Discord<input name="discord" maxlength="40" value="${esc(m.discord)}"></label>`}
     <label>WhatsApp<input name="whatsapp" maxlength="20" inputmode="tel" placeholder="(91) 99999-9999" value="${esc(m.whatsapp)}"></label>
     <label class="full">Disponibilidade<textarea name="disponibilidade" rows="2" maxlength="300" placeholder="Ex.: noites de segunda a sexta, WoE de sábado">${esc(m.disponibilidade)}</textarea></label>
     <label class="full">Observações<textarea name="observacoes" rows="3" maxlength="600" placeholder="Build, equipamentos, cartas importantes…">${esc(m.observacoes)}</textarea></label>
@@ -788,6 +876,7 @@ function ligarPerfil(alvoId, depois) {
       funcao_preferida: txt('funcao_preferida'), discord: txt('discord'), whatsapp: txt('whatsapp'),
       disponibilidade: txt('disponibilidade'), observacoes: txt('observacoes')
     };
+    if (!f.elements.discord) delete dados.discord;
     await tentar(async () => {
       const { data, error } = await sb.from('membros').update(dados).eq('id', alvoId).select().single();
       if (error) throw error;
@@ -804,16 +893,28 @@ function viewPerfil(view) {
   <div class="cab"><h2>Meu perfil</h2><span class="muted">${esc(nomeCargo(m.cargo))}, na guild desde ${new Date(m.criado_em).toLocaleDateString('pt-BR')}</span></div>
   <section class="bloco">${formPerfilHTML(m)}</section>
   <section class="bloco">
+    <h3>Discord</h3>
+    ${m.discord_id ? `
+      <div class="dc-conta">
+        ${m.discord_avatar ? `<img src="${esc(m.discord_avatar)}" alt="" width="48" height="48">` : ''}
+        <div><b>${esc(m.discord_nome || m.discord_usuario)}</b> <span class="muted">@${esc(m.discord_usuario)}</span><br>${discordLinha(m)}</div>
+      </div>
+      ${m.discord_no_servidor === false ? '<p class="aviso erro" style="margin:1rem 0 0">Sua conta do Discord não foi encontrada no servidor da guild. Peça o convite para a liderança.</p>' : ''}`
+    : `<p class="muted" style="margin-top:0">Conecte sua conta do Discord para a liderança confirmar que você está no servidor da guild. Depois disso você também pode entrar no site pelo Discord.</p>
+       <button class="btn-discord" id="conectar-discord" type="button">Conectar Discord</button>`}
+  </section>
+  ${CONFIG.LOGIN_EMAIL ? `<section class="bloco">
     <h3>Alterar senha</h3>
     <form id="f-senha" class="form-grid">
       <label>Nova senha<input name="senha" type="password" minlength="6" autocomplete="new-password" required></label>
       <label>Confirmar nova senha<input name="senha2" type="password" minlength="6" autocomplete="new-password" required></label>
       <div class="full acoes"><button class="btn-sec" type="submit">Alterar senha</button></div>
     </form>
-  </section>`;
+  </section>` : ''}`;
   ligarPerfil(S.eu.id, () => {});
+  $('#conectar-discord')?.addEventListener('click', () => entrarComDiscord(true));
   const fs = $('#f-senha');
-  fs.onsubmit = async ev => {
+  if (fs) fs.onsubmit = async ev => {
     ev.preventDefault();
     if (!fs.reportValidity()) return;
     const d = Object.fromEntries(new FormData(fs));
@@ -957,7 +1058,9 @@ function modalPt(p = null) {
 const SECOES_CTL = [
   ['geral',    'Visão geral',          () => true],
   ['membros',  'Membros',              () => true],
-  ['cargos',   'Cargos e permissões',  () => true],
+  ['cargos',   'Cargos e acessos',     () => true],
+  ['discord',  'Discord',              gereMembros],
+  ['admins',   'Administradores',      isAdmin],
   ['classes',  'Classes',              () => pode('gerenciar_classes')],
   ['registro', 'Registro',             () => pode('ver_registro')]
 ];
@@ -968,7 +1071,7 @@ function viewControle(view, sub) {
   if (!secoes.some(([id]) => id === sub)) sub = 'geral';
   const pend = pode('aprovar_membros') ? S.membros.filter(m => m.status === 'pendente').length : 0;
   view.innerHTML = `
-  <div class="cab"><h2>Painel de controle</h2><span class="muted">${esc(nomeCargo(S.eu.cargo))}</span></div>
+  <div class="cab"><h2>Painel de controle</h2><span class="muted">${esc(nomeCargo(S.eu.cargo))}</span>${isAdmin() ? '<span class="tag-admin">Administrador do site</span>' : ''}</div>
   <div class="ctl">
     <nav class="ctl-menu" aria-label="Seções do painel">${secoes.map(([id, nome]) =>
       `<a href="#controle/${id}" ${id === sub ? 'aria-current="page"' : ''}>${nome}${id === 'membros' && pend ? `<span class="badge">${pend}</span>` : ''}</a>`).join('')}</nav>
@@ -976,7 +1079,7 @@ function viewControle(view, sub) {
   </div>`;
   const corpo = $('#ctl-corpo');
   corpo.onclick = cliqueCtl;
-  ({ geral:ctlGeral, membros:ctlMembros, cargos:ctlCargos, classes:ctlClasses, registro:ctlRegistro })[sub](corpo);
+  ({ geral:ctlGeral, membros:ctlMembros, cargos:ctlCargos, discord:ctlDiscord, admins:ctlAdmins, classes:ctlClasses, registro:ctlRegistro })[sub](corpo);
 }
 
 async function mudarMembro(id, dados, msg) {
@@ -1027,7 +1130,7 @@ function ctlGeral(el) {
     <h3>Aguardando aprovação</h3>
     ${pend.length ? pend.map(m => `
       <div class="linha">
-        ${pessoaHTML(m)} ${classeHTML(m)}
+        ${pessoaHTML(m)} ${classeHTML(m)} ${discordLinha(m)}
         <small class="muted">pediu em ${new Date(m.criado_em).toLocaleDateString('pt-BR')}</small>
         <span class="acoes">
           <button class="btn" data-status="ativo" data-id="${m.id}">Aprovar</button>
@@ -1047,7 +1150,7 @@ function ctlMembros(el) {
     <select id="c-cargo" aria-label="Cargo"><option value="">Todos os cargos</option>${cargosOrdenados().map(c => `<option value="${esc(c.id)}" ${F.cargo === c.id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select>
   </div>
   <div class="tabela-wrap"><table class="tabela tabela-ctl">
-    <thead><tr><th>Nick</th><th class="c-opc">Classe</th><th>Cargo</th><th>Status</th><th><span class="sr">Ações</span></th></tr></thead>
+    <thead><tr><th>Nick</th><th class="c-opc">Classe</th><th title="Está no servidor do Discord">Discord</th><th>Cargo</th><th>Status</th><th><span class="sr">Ações</span></th></tr></thead>
     <tbody id="c-lista"></tbody>
   </table></div>`;
 
@@ -1067,15 +1170,16 @@ function ctlMembros(el) {
       else status = `<span class="st st-${m.status}">${STATUS[m.status]}</span>`;
       return `
       <tr data-id="${m.id}">
-        <td>${pessoaHTML(m)}</td>
+        <td>${pessoaHTML(m)}${isAdminId(m.id) ? ' <span class="tag-admin" title="Administrador do site">Admin</span>' : ''}</td>
         <td class="c-opc">${classeHTML(m)}</td>
+        <td>${discordBadge(m)}</td>
         <td>${podeCargo(m) && m.status === 'ativo'
           ? `<select data-campo="cargo" aria-label="Cargo de ${esc(m.nick)}">${opcoesCargo(m)}</select>`
           : `<span class="${m.cargo === 'lider' ? 'cargo-lider' : ''}">${esc(nomeCargo(m.cargo))}</span>`}</td>
         <td>${status}</td>
         <td>${podeEditar(m) ? `<button class="btn-link" data-editar="${m.id}">Editar</button>` : ''}</td>
       </tr>`;
-    }).join('') : `<tr><td colspan="5" class="vazio-msg">Ninguém encontrado com esses filtros.</td></tr>`;
+    }).join('') : `<tr><td colspan="6" class="vazio-msg">Ninguém encontrado com esses filtros.</td></tr>`;
   };
   el.querySelectorAll('.filtros input, .filtros select').forEach(x => x.oninput = desenhar);
   $('#c-lista').onchange = e => {
@@ -1096,50 +1200,42 @@ async function salvarCargo(id, dados, msg) {
 }
 
 function ctlCargos(el) {
-  const edita = isLider();
+  const edita = isAdmin();
   const cs = cargosOrdenados();
-  const meio = cs.filter(c => !['lider','membro'].includes(c.id));
+  const moveis = cs.filter(c => c.id !== 'membro');
+  const linhaPerm = ([k, nome, desc]) => `<tr><th scope="row">${nome}<small>${desc}</small></th>${cs.map(c =>
+    `<td><input type="checkbox" data-cargo="${esc(c.id)}" data-perm="${k}" ${c.permissoes.includes(k) ? 'checked' : ''} ${edita ? '' : 'disabled'} aria-label="${nome}: ${esc(c.nome)}"></td>`).join('')}</tr>`;
   el.innerHTML = `
   <section class="bloco">
-    <h3>Cargos e permissões</h3>
-    <p class="muted" style="margin-top:0">${edita ? 'Marque o que cada cargo pode fazer. As mudanças valem na hora para todos.' : 'Somente o Líder pode alterar cargos e permissões.'}
-      Cada cargo só consegue agir sobre membros dos cargos à direita dele.</p>
+    <h3>Cargos e acessos</h3>
+    <p class="muted" style="margin-top:0">${edita ? 'Marque o que cada cargo pode ver e fazer no site. As mudanças valem na hora para todos.' : 'Somente administradores do site alteram cargos e acessos.'}
+      Cada cargo só consegue agir sobre membros dos cargos à direita dele. Administradores do site têm acesso a tudo, independente do cargo.</p>
     <div class="tabela-wrap"><table class="tabela matriz">
-      <thead><tr><th scope="col">Permissão</th>${cs.map(c => `<th scope="col">${edita && c.id !== 'lider'
+      <thead><tr><th scope="col">Cargo</th>${cs.map(c => `<th scope="col">${edita
         ? `<input data-cargo="${esc(c.id)}" name="nome" value="${esc(c.nome)}" maxlength="40" aria-label="Nome do cargo ${esc(c.nome)}">` : esc(c.nome)}</th>`).join('')}</tr></thead>
       <tbody>
-        <tr><th scope="row">Vagas<small>Ocupadas / limite (vazio = sem limite)</small></th>${cs.map(c => `<td>${ocupados(c.id)} / ${edita && c.id !== 'lider'
+        <tr><th scope="row">Vagas<small>Ocupadas / limite (vazio = sem limite)</small></th>${cs.map(c => `<td>${ocupados(c.id)} / ${edita
           ? `<input data-cargo="${esc(c.id)}" name="limite" type="number" min="1" max="500" value="${c.limite ?? ''}" placeholder="∞" aria-label="Vagas de ${esc(c.nome)}">`
           : (c.limite ?? '∞')}</td>`).join('')}</tr>
-        ${edita && meio.length > 1 ? `<tr><th scope="row">Posição<small>Ordem na hierarquia</small></th>${cs.map(c => {
-          const i = meio.indexOf(c);
-          return `<td>${i < 0 ? '' : `<button class="mover" data-mover="-1" data-cargo="${esc(c.id)}" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(c.nome)}">←</button><button class="mover" data-mover="1" data-cargo="${esc(c.id)}" ${i === meio.length - 1 ? 'disabled' : ''} aria-label="Descer ${esc(c.nome)}">→</button>`}</td>`;
+        ${edita && moveis.length > 1 ? `<tr><th scope="row">Posição<small>Ordem na hierarquia</small></th>${cs.map(c => {
+          const i = moveis.indexOf(c);
+          return `<td>${i < 0 ? '' : `<button class="mover" data-mover="-1" data-cargo="${esc(c.id)}" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(c.nome)}">←</button><button class="mover" data-mover="1" data-cargo="${esc(c.id)}" ${i === moveis.length - 1 ? 'disabled' : ''} aria-label="Descer ${esc(c.nome)}">→</button>`}</td>`;
         }).join('')}</tr>` : ''}
-        ${PERMISSOES.map(([k, nome, desc]) => `<tr><th scope="row">${nome}<small>${desc}</small></th>${cs.map(c => {
-          const lid = c.id === 'lider';
-          return `<td><input type="checkbox" data-cargo="${esc(c.id)}" data-perm="${k}" ${lid || c.permissoes.includes(k) ? 'checked' : ''} ${!edita || lid ? 'disabled' : ''} aria-label="${nome}: ${esc(c.nome)}"></td>`;
-        }).join('')}</tr>`).join('')}
-        ${edita ? `<tr><th scope="row"></th>${cs.map(c => `<td>${['lider','membro'].includes(c.id) ? '' : `<button class="btn-link perigo" data-excluir-cargo="${esc(c.id)}">Excluir</button>`}</td>`).join('')}</tr>` : ''}
+        <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Acesso ao site</th></tr>
+        ${ACESSOS.map(linhaPerm).join('')}
+        <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Gestão da guild</th></tr>
+        ${PERMISSOES.map(linhaPerm).join('')}
+        ${edita ? `<tr><th scope="row"></th>${cs.map(c => `<td>${c.id === 'membro' ? '' : `<button class="btn-link perigo" data-excluir-cargo="${esc(c.id)}">Excluir</button>`}</td>`).join('')}</tr>` : ''}
       </tbody>
     </table></div>
+    <p class="muted" style="margin:.8rem 0 0;font-size:.92rem">"Meu perfil" fica sempre disponível. Quem não tem acesso a Membros ainda aparece no Painel e nas PTs, mas sem contatos e observações.</p>
     ${edita ? `
     <form id="f-cargo" class="form-grid" style="margin-top:1.2rem">
       <label>Novo cargo<input name="nome" required minlength="2" maxlength="40" placeholder="Ex.: Recrutador"></label>
       <label>Vagas<input name="limite" type="number" min="1" max="500" placeholder="Sem limite"></label>
       <div class="full acoes"><button class="btn-sec" type="submit">Criar cargo</button></div>
     </form>` : ''}
-  </section>
-  ${edita ? `
-  <section class="bloco">
-    <h3>Transferir liderança</h3>
-    <p class="muted" style="margin-top:0">O novo líder recebe controle total do site, incluindo este painel. Você passa para o cargo escolhido.</p>
-    <form id="f-transferir" class="form-grid">
-      <label>Novo líder<select name="novo" required><option value="">Selecione</option>${S.membros.filter(m => m.status === 'ativo' && m.id !== S.eu.id)
-        .map(m => `<option value="${m.id}">${esc(m.nick)} (${esc(nomeCargo(m.cargo))})</option>`).join('')}</select></label>
-      <label>Seu novo cargo<select name="cargo">${cs.filter(c => c.id !== 'lider').map(c => `<option value="${esc(c.id)}" ${c.id === 'vice' ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></label>
-      <div class="full acoes"><button class="btn-sec perigo-borda" type="submit">Transferir liderança</button></div>
-    </form>
-  </section>` : ''}`;
+  </section>`;
   if (!edita) return;
 
   const tab = el.querySelector('.matriz');
@@ -1166,7 +1262,7 @@ function ctlCargos(el) {
   tab.onclick = async e => {
     const mv = e.target.closest('[data-mover]');
     if (mv) {
-      const ids = meio.map(c => c.id);
+      const ids = moveis.map(c => c.id);
       const i = ids.indexOf(mv.dataset.cargo), j = i + Number(mv.dataset.mover);
       [ids[i], ids[j]] = [ids[j], ids[i]];
       await tentar(async () => {
@@ -1194,27 +1290,132 @@ function ctlCargos(el) {
     const d = Object.fromEntries(new FormData(fc));
     let id = slug(d.nome), n = 2;
     while (cargoDe(id)) id = slug(d.nome) + '_' + n++;
-    const ordem = Math.max(0, ...meio.map(c => c.ordem)) + 1;
+    const ordem = Math.max(0, ...moveis.map(c => c.ordem)) + 1;
     const ok = await tentar(async () => {
-      const { error } = await sb.from('cargos').insert({ id, nome: d.nome.trim(), ordem, limite: d.limite ? Number(d.limite) : null, permissoes: [] });
+      const { error } = await sb.from('cargos').insert({
+        id, nome: d.nome.trim(), ordem, limite: d.limite ? Number(d.limite) : null,
+        permissoes: ACESSOS.map(([k]) => k)
+      });
       if (error) throw error;
     }, 'Cargo criado');
     if (ok) { await tentar(carregarClasses); rota(); }
   };
+}
 
-  const ft = $('#f-transferir');
-  ft.onsubmit = async ev => {
+// ---------- administradores do site ----------
+function ctlAdmins(el) {
+  const admins = S.membros.filter(m => isAdminId(m.id));
+  const candidatos = S.membros.filter(m => m.status === 'ativo' && !isAdminId(m.id));
+  el.innerHTML = `
+  <section class="bloco">
+    <h3>Administradores do site</h3>
+    <p class="muted" style="margin-top:0">Administradores configuram cargos, acessos e opções do site, e podem fazer tudo o que os cargos fazem.
+      A conta de um administrador não pode ser alterada por nenhum cargo da guild. Esse papel é separado do cargo no jogo.</p>
+    ${admins.map(m => `
+      <div class="linha">
+        ${pessoaHTML(m)} <span class="muted">${esc(nomeCargo(m.cargo))}${m.id === S.eu.id ? ', você' : ''}</span>
+        <span class="acoes">${admins.length > 1 ? `<button class="btn-link perigo" data-remover-admin="${m.id}">Remover</button>` : '<small class="muted">Único administrador</small>'}</span>
+      </div>`).join('')}
+    ${candidatos.length ? `
+    <form id="f-admin" class="form-grid" style="margin-top:1.2rem">
+      <label>Adicionar administrador<select name="id" required><option value="">Selecione um membro</option>${candidatos.map(m => `<option value="${m.id}">${esc(m.nick)} (${esc(nomeCargo(m.cargo))})</option>`).join('')}</select></label>
+      <div class="full acoes"><button class="btn-sec" type="submit">Tornar administrador</button></div>
+    </form>` : ''}
+  </section>`;
+
+  el.querySelectorAll('[data-remover-admin]').forEach(b => b.onclick = async () => {
+    const m = S.membros.find(x => x.id === b.dataset.removerAdmin);
+    const voce = m.id === S.eu.id;
+    if (!confirm(voce ? 'Remover você mesmo dos administradores? Você perde o acesso às configurações do site.' : `Remover ${m.nick} dos administradores do site?`)) return;
+    const ok = await tentar(async () => { const { error } = await sb.from('admins').delete().eq('user_id', m.id); if (error) throw error; }, 'Administrador removido');
+    if (ok) { await tentar(carregarClasses); recarregar(); }
+  });
+  const f = $('#f-admin');
+  if (f) f.onsubmit = async ev => {
     ev.preventDefault();
-    if (!ft.reportValidity()) return;
-    const d = Object.fromEntries(new FormData(ft));
-    const novo = S.membros.find(m => m.id === d.novo);
-    if (!confirm(`Passar a liderança para ${novo.nick}? Você vira ${nomeCargo(d.cargo)} e perde o controle total do site.`)) return;
-    const ok = await tentar(async () => {
-      const { error } = await sb.rpc('transferir_lideranca', { novo: d.novo, meu_novo_cargo: d.cargo });
-      if (error) throw error;
-    }, `${novo.nick} agora é o líder`);
-    if (ok) { location.hash = '#painel'; recarregar(); }
+    if (!f.reportValidity()) return;
+    const m = S.membros.find(x => x.id === f.elements.id.value);
+    if (!confirm(`Tornar ${m.nick} administrador do site? Ele poderá alterar cargos, acessos e todas as configurações.`)) return;
+    const ok = await tentar(async () => { const { error } = await sb.from('admins').insert({ user_id: m.id }); if (error) throw error; }, `${m.nick} agora é administrador do site`);
+    if (ok) { await tentar(carregarClasses); rota(); }
   };
+}
+
+// ---------- discord ----------
+async function sincronizarDiscord(silencioso = false) {
+  if (S.sincronizando) return;
+  S.sincronizando = true;
+  const btn = $('#dc-sync'); if (btn) { btn.disabled = true; btn.textContent = 'Verificando…'; }
+  try {
+    const { data, error } = await sb.functions.invoke('discord-sync', { body: {} });
+    if (error) {
+      let msg = error.message;
+      try { const b = await error.context.json(); if (b?.erro) msg = b.erro; } catch {}
+      if (/Failed to send|not found|404/i.test(msg)) msg = 'A função discord-sync não foi encontrada. Confira se ela foi publicada no Supabase.';
+      throw new Error(msg);
+    }
+    S.discordSync = data;
+    await carregarTudo();
+    if (!silencioso) toast('Discord verificado');
+  } catch (e) { toast(msgErro(e), true); }
+  finally { S.sincronizando = false; atualizarNav(); rota(); }
+}
+
+async function ctlDiscord(el) {
+  if (!S.discordSync) {
+    const r = await sb.from('discord_sync').select('*').eq('id', 1).maybeSingle();
+    S.discordSync = r.data || null;
+  }
+  if (!el.isConnected) return;
+  const ds = S.discordSync;
+  const ativos = S.membros.filter(m => m.status === 'ativo');
+  const dentro = ativos.filter(m => m.discord_no_servidor === true);
+  const fora = ativos.filter(m => m.discord_id && m.discord_no_servidor === false);
+  const semVinculo = ativos.filter(m => !m.discord_id);
+  const semConta = ds?.sem_conta || [];
+  const lista = (ms, extra) => ms.length ? ms.map(m => `<div class="linha">${pessoaHTML(m)} ${extra(m)}</div>`).join('') : '<p class="muted" style="margin:0">Ninguém.</p>';
+
+  el.innerHTML = `
+  <section class="bloco">
+    <div class="cab" style="margin-bottom:.4rem">
+      <h3>Discord${ds?.servidor ? `: ${esc(ds.servidor)}` : ''}</h3>
+      <div class="acoes"><button class="btn-sec" id="dc-sync" ${S.sincronizando ? 'disabled' : ''}>${S.sincronizando ? 'Verificando…' : 'Verificar agora'}</button></div>
+    </div>
+    <p class="muted" style="margin:0">${ds?.ultima ? `Última verificação: ${fmtCurta(ds.ultima)}. O servidor tem ${ds.total} ${ds.total === 1 ? 'pessoa' : 'pessoas'}.` : 'O Discord ainda não foi verificado.'}</p>
+    ${isAdmin() && S.config ? `
+    <label class="check" style="margin-top:1rem">
+      <input type="checkbox" id="dc-exigir" ${S.config.exigir_discord ? 'checked' : ''}>
+      Exigir estar no servidor do Discord para aprovar cadastros
+    </label>` : (S.config?.exigir_discord ? '<p style="margin:1rem 0 0">A guild exige estar no servidor do Discord para aprovar cadastros.</p>' : '')}
+  </section>
+  <div class="stats">
+    <div class="stat"><b>${dentro.length}</b><span>Membros no servidor</span></div>
+    <div class="stat ${fora.length ? 'destaque' : ''}"><b>${fora.length}</b><span>Fora do servidor</span></div>
+    <div class="stat"><b>${semVinculo.length}</b><span>Sem Discord conectado</span></div>
+    <div class="stat"><b>${semConta.length}</b><span>No Discord sem conta no site</span></div>
+  </div>
+  <section class="bloco"><h3>Fora do servidor</h3>
+    ${lista(fora, m => `<span class="muted">@${esc(m.discord_usuario)}</span><span class="acoes">${esc(nomeCargo(m.cargo))}</span>`)}</section>
+  <section class="bloco"><h3>Sem Discord conectado</h3>
+    <p class="muted" style="margin-top:0">Esses membros entraram com email e ainda não conectaram o Discord em "Meu perfil".</p>
+    ${lista(semVinculo, m => `<span class="acoes muted">${esc(nomeCargo(m.cargo))}</span>`)}</section>
+  <section class="bloco"><h3>No Discord, mas sem conta no site</h3>
+    ${semConta.length ? semConta.map(p => `<div class="linha"><b>${esc(p.nome)}</b><span class="muted">@${esc(p.usuario)}</span></div>`).join('') : '<p class="muted" style="margin:0">Ninguém.</p>'}
+  </section>`;
+
+  $('#dc-sync').onclick = () => sincronizarDiscord();
+  const ex = $('#dc-exigir');
+  if (ex) ex.onchange = async () => {
+    const ok = await tentar(async () => {
+      const { data, error } = await sb.from('config_guild').update({ exigir_discord: ex.checked }).eq('id', 1).select().single();
+      if (error) throw error;
+      S.config = data;
+    }, ex.checked ? 'Discord passou a ser exigido para aprovar' : 'Discord deixou de ser exigido');
+    if (!ok) ex.checked = !ex.checked;
+  };
+  // verifica sozinho se a última verificação tem mais de 10 minutos
+  const velho = !ds?.ultima || Date.now() - new Date(ds.ultima).getTime() > 10 * 60e3;
+  if (velho && !S.sincronizando && !S.syncTentado) { S.syncTentado = true; sincronizarDiscord(true); }
 }
 
 // ---------- classes ----------
@@ -1305,14 +1506,19 @@ if (!configurado) {
   </div></div></div>`;
 } else {
   if (/type=recovery/.test(location.hash)) S.recuperando = true;
+  const pUrl = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
+  let avisoInicial = pUrl.get('error_description') ? msgErro({ message: pUrl.get('error_description') }) : '';
+  if (avisoInicial) history.replaceState(null, '', urlBase());
+  S.avisoInicial = () => { const a = avisoInicial; avisoInicial = ''; return a; };
   sb.auth.onAuthStateChange((evento, sessao) => {
     setTimeout(() => {
       if (evento === 'PASSWORD_RECOVERY' || (S.recuperando && sessao && !$('#f-auth'))) { S.recuperando = true; telaAuth('nova-senha'); return; }
       if (S.recuperando || evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') return;
-      if (!sessao) { S.user = null; S.eu = null; telaAuth(); return; }
+      if (!sessao) { S.user = null; S.eu = null; const a = S.avisoInicial(); telaAuth('entrar', esc(a), !!a); return; }
       if (S.user?.id === sessao.user.id && S.eu) return;
       S.user = sessao.user;
-      if (location.hash.includes('access_token')) history.replaceState(null, '', urlBase());
+      const a = S.avisoInicial(); if (a) setTimeout(() => toast(a, true), 800);
+      if (location.hash.includes('access_token') || location.search.includes('code=')) history.replaceState(null, '', urlBase());
       entrarNoApp();
     }, 0);
   });
