@@ -332,7 +332,8 @@ const ACESSOS = [
   ['ver_pts',     'PTs',      'Ver as PTs e entrar ou sair delas'],
   ['ver_avisos',  'Avisos',   'Ver os avisos prontos e copiar para o grupo'],
   ['ver_links',   'Links',    'Ver os links importantes'],
-  ['ver_guias',   'Guias',    'Ver os guias e vídeos de classe']
+  ['ver_guias',   'Guias',    'Ver os guias e vídeos de classe'],
+  ['ver_contatos','WhatsApp dos membros', 'Ver o telefone de todos os membros (cada um sempre vê o próprio)']
 ];
 // O que cada cargo pode criar e editar no conteúdo do site
 const PERM_CONTEUDO = [
@@ -357,7 +358,7 @@ const configurado = !CONFIG.SUPABASE_URL.includes('SEU-PROJETO');
 const sb = configurado ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
 
 const S = { user:null, eu:null, classes:[], cargos:[], membros:[], parties:[], pm:[], recuperando:false, canal:null, admins:[],
-            config:null, discordSync:null, sincronizando:false,
+            config:null, discordSync:null, sincronizando:false, contatos:{},
             filtroCtl:{ q:'', status:'', cargo:'' } };
 const app = document.getElementById('app');
 const modal = document.getElementById('modal');
@@ -413,6 +414,10 @@ const iniciais = n => esc((n || '?').trim().slice(0, 2));
 const numero = n => n == null ? '-' : Number(n).toLocaleString('pt-BR');
 const fmtData = iso => new Intl.DateTimeFormat('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }).format(new Date(iso));
 const paraInputLocal = iso => { if (!iso) return ''; const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+const whatsappDe = id => S.contatos[id] || '';
+const podeVerZap = m => m.id === S.eu?.id || pode('ver_contatos');
+const dataBR = d => d ? d.slice(0, 10).split('-').reverse().join('/') : '-';
+const hojeISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 const urlBase = () => location.href.split('#')[0].split('?')[0];
 
 function toast(msg, erro = false) {
@@ -588,6 +593,11 @@ async function carregarTudo() {
   S.membros = m.data.filter(x => x.id !== eu.data.id).concat(eu.data)
     .sort((x, y) => x.nick.localeCompare(y.nick, 'pt-BR'));
   S.parties = p.data; S.pm = pm.data;
+  await carregarContatos();
+}
+async function carregarContatos() {
+  const { data, error } = await sb.from('membros_contato').select('id, whatsapp');
+  S.contatos = error ? {} : Object.fromEntries(data.map(c => [c.id, c.whatsapp]));
 }
 async function recarregar() {
   await tentar(async () => {
@@ -611,6 +621,7 @@ async function entrarNoApp() {
     if (S.recuperando) return;
     S.eu = data;
     await carregarClasses();
+    await carregarContatos();
     if (S.recuperando) return;
     if (data.status === 'ativo') {
       await carregarTudo();
@@ -831,7 +842,7 @@ function viewMembros(view) {
 function modalMembro(id) {
   const m = S.membros.find(x => x.id === id); if (!m) return;
   const c = classeDe(m.classe_id);
-  const zap = (m.whatsapp || '').replace(/\D/g, '');
+  const zap = whatsappDe(m.id).replace(/\D/g, '');
   const pS = podeStatus(m), pC = podeCargo(m), pE = podeEditar(m);
   modal.innerHTML = `
     <div class="modal-topo">
@@ -847,10 +858,11 @@ function modalMembro(id) {
       <dt>Função</dt><dd>${FUNCOES[funcaoDe(m)] || '-'}</dd>
       <dt>Discord</dt><dd>${m.discord_id ? discordLinha(m) : (esc(m.discord) || '-')}</dd>
       ${m.discord_cargos?.length ? `<dt>Cargos no Discord</dt><dd>${m.discord_cargos.map(esc).join(', ')}</dd>` : ''}
-      <dt>WhatsApp</dt><dd>${zap ? `<a href="https://wa.me/${zap.length <= 11 ? '55' + zap : zap}" target="_blank" rel="noopener">${esc(m.whatsapp)}</a>` : '-'}</dd>
+      ${podeVerZap(m) ? `<dt>WhatsApp</dt><dd>${zap ? `<a href="https://wa.me/${zap.length <= 11 ? '55' + zap : zap}" target="_blank" rel="noopener">${esc(whatsappDe(m.id))}</a>` : '-'}</dd>` : ''}
       <dt>Disponibilidade</dt><dd>${esc(m.disponibilidade) || '-'}</dd>
       <dt>Observações</dt><dd>${esc(m.observacoes) || '-'}</dd>
-      <dt>Na guild desde</dt><dd>${new Date(m.criado_em).toLocaleDateString('pt-BR')}</dd>
+      <dt>Na guild desde</dt><dd>${dataBR(m.entrou_guild)}</dd>
+      <dt>No site desde</dt><dd>${new Date(m.criado_em).toLocaleDateString('pt-BR')}</dd>
     </dl>
     ${pS || pC || pE ? `
     <form class="gestao form-grid" id="f-gestao">
@@ -902,11 +914,12 @@ function formPerfilHTML(m) {
     <label>Classe<select name="classe_id"><option value="">Selecione</option>${optClasses(m.classe_id)}</select></label>
     <label>Nível base<input name="nivel" type="number" min="1" max="999" value="${m.nivel ?? ''}"></label>
     <label>Poder (CP)<input name="poder" type="number" min="0" value="${m.poder ?? ''}"></label>
+    <label>Na guild desde<input name="entrou_guild" type="date" max="${hojeISO()}" value="${esc(m.entrou_guild || '')}"></label>
     <label>Função na PT<select name="funcao_preferida"><option value="">Padrão da classe</option>${Object.entries(FUNCOES).map(([k, v]) => `<option value="${k}" ${m.funcao_preferida === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     ${m.discord_id
       ? `<label>Discord<input value="@${esc(m.discord_usuario)}" disabled><small class="muted">Conectado pela conta do Discord</small></label>`
       : `<label>Discord<input name="discord" maxlength="40" value="${esc(m.discord)}"></label>`}
-    <label>WhatsApp<input name="whatsapp" maxlength="20" inputmode="tel" placeholder="(91) 99999-9999" value="${esc(m.whatsapp)}"></label>
+    ${podeVerZap(m) ? `<label>WhatsApp<input name="whatsapp" maxlength="20" inputmode="tel" placeholder="(91) 99999-9999" value="${esc(whatsappDe(m.id))}"><small class="muted">Visível só para você e para a staff</small></label>` : ''}
     <label class="full">Disponibilidade<textarea name="disponibilidade" rows="2" maxlength="300" placeholder="Ex.: noites de segunda a sexta, WoE de sábado">${esc(m.disponibilidade)}</textarea></label>
     <label class="full">Observações<textarea name="observacoes" rows="3" maxlength="600" placeholder="Build, equipamentos, cartas importantes…">${esc(m.observacoes)}</textarea></label>
     <div class="full acoes"><button class="btn" type="submit">Salvar perfil</button></div>
@@ -922,13 +935,22 @@ function ligarPerfil(alvoId, depois) {
     const txt = k => (fd.get(k) || '').trim() || null;
     const dados = {
       nick: fd.get('nick').trim(), classe_id: num('classe_id'), nivel: num('nivel'), poder: num('poder'),
-      funcao_preferida: txt('funcao_preferida'), discord: txt('discord'), whatsapp: txt('whatsapp'),
-      disponibilidade: txt('disponibilidade'), observacoes: txt('observacoes')
+      funcao_preferida: txt('funcao_preferida'), discord: txt('discord'),
+      disponibilidade: txt('disponibilidade'), observacoes: txt('observacoes'),
+      entrou_guild: txt('entrou_guild')
     };
     if (!f.elements.discord) delete dados.discord;
     await tentar(async () => {
       const { data, error } = await sb.from('membros').update(dados).eq('id', alvoId).select().single();
       if (error) throw error;
+      if (f.elements.whatsapp) {
+        const zap = txt('whatsapp');
+        if (zap !== (whatsappDe(alvoId) || null)) {
+          const r = await sb.from('membros_contato').upsert({ id: alvoId, whatsapp: zap });
+          if (r.error) throw r.error;
+          S.contatos[alvoId] = zap;
+        }
+      }
       if (data.id === S.eu.id) S.eu = data;
       S.membros = S.membros.map(x => x.id === data.id ? data : x);
       if ($('#eu-nick')) $('#eu-nick').textContent = data.nick;
@@ -939,7 +961,7 @@ function ligarPerfil(alvoId, depois) {
 function viewPerfil(view) {
   const m = S.eu;
   view.innerHTML = `
-  <div class="cab"><h2>Meu perfil</h2><span class="muted">${esc(nomeCargo(m.cargo))}, na guild desde ${new Date(m.criado_em).toLocaleDateString('pt-BR')}</span></div>
+  <div class="cab"><h2>Meu perfil</h2><span class="muted">${esc(nomeCargo(m.cargo))}${m.entrou_guild ? `, na guild desde ${dataBR(m.entrou_guild)}` : ''}</span></div>
   <section class="bloco">${formPerfilHTML(m)}</section>
   <section class="bloco">
     <h3>Discord</h3>
