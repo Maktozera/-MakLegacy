@@ -248,6 +248,34 @@ details.anteriores summary{cursor:pointer;color:var(--muted);margin-bottom:1rem}
 label.check{flex-direction:row;align-items:center;gap:.6rem;font-weight:400}
 label.check input{width:1.2rem;height:1.2rem;accent-color:var(--gold)}
 
+
+/* Avisos, links e guias */
+.chips{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+.chips button{background:var(--surface);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:.3em .9em}
+.chips button[aria-pressed="true"]{border-color:var(--gold);color:var(--text)}
+.grade-cartoes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.1rem}
+.cartao{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.1rem;display:flex;flex-direction:column;gap:.7rem}
+.cartao h3{font-size:1.15rem}
+.tag{display:inline-block;margin-top:.3rem;font-size:.82rem;padding:.05em .6em;border-radius:99px;background:var(--surface-2);color:var(--muted)}
+.texto-aviso{margin:0;font:inherit;font-size:.95rem;white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border-radius:8px;padding:.8rem;max-height:16rem;overflow:auto}
+.cartao footer{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:auto}
+.cartao footer small{margin-left:auto}
+.link-linha{align-items:flex-start}
+.link-titulo{font-weight:700;margin-right:.5rem}
+.guia-cartao{text-decoration:none;color:var(--text);border-top:3px solid var(--c)}
+.guia-cartao:hover{border-color:var(--c);background:var(--surface-2)}
+.guia-cartao .classe::before{background:var(--c)}
+.guia{max-width:820px}
+.conteudo-guia{line-height:1.65}
+.conteudo-guia h3{margin:1.2rem 0 .5rem}
+.conteudo-guia h3:first-child,.conteudo-guia h4:first-child{margin-top:0}
+.conteudo-guia h4{font-family:var(--display);font-size:1.05rem;margin:1rem 0 .4rem}
+.conteudo-guia p{margin:.5rem 0}
+.conteudo-guia ul{margin:.4rem 0;padding-left:1.3rem}
+.videos{display:grid;gap:1rem;margin-top:1.2rem}
+.video{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#000}
+.video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
 /* Modal e toast */
 dialog{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:1.4rem;width:min(560px,calc(100% - 2rem));max-height:calc(100% - 2rem)}
 dialog::backdrop{background:rgba(10,12,24,.65)}
@@ -287,8 +315,12 @@ const CONFIG = {
 };
 
 const CORES_ARVORE = {
-  Swordsman:'#e0625a', Mage:'#a88bff', Archer:'#7cc86f', Acolyte:'#7ec8f2',
-  Thief:'#4dbfae', Merchant:'#e8a93c', Gunslinger:'#b3b8c9'
+  // cores dos ícones do jogo
+  Espadachim:'#e0625a', 'Noviço':'#6cc070', Mago:'#6f9ef2', Gatuno:'#a983e0',
+  Arqueiro:'#d9b54a', Mercador:'#ea8a3e', Justiceiro:'#a39460', Doram:'#ef8fb4',
+  // nomes antigos
+  Swordsman:'#e0625a', Mage:'#6f9ef2', Archer:'#d9b54a', Acolyte:'#6cc070',
+  Thief:'#a983e0', Merchant:'#ea8a3e', Gunslinger:'#a39460'
 };
 const FUNCOES = { tank:'Tank', dps:'DPS', suporte:'Suporte', utilidade:'Utilidade' };
 const CORES_FUNCAO = { tank:'#e0625a', dps:'#e7b54f', suporte:'#7ec8f2', utilidade:'#a88bff' };
@@ -297,7 +329,16 @@ const STATUS = { ativo:'Ativo', pendente:'Pendente', inativo:'Inativo', recusado
 const ACESSOS = [
   ['ver_painel',  'Painel',   'Ver o painel com a composição da guild'],
   ['ver_membros', 'Membros',  'Ver a lista completa de membros, com contatos e fichas'],
-  ['ver_pts',     'PTs',      'Ver as PTs e entrar ou sair delas']
+  ['ver_pts',     'PTs',      'Ver as PTs e entrar ou sair delas'],
+  ['ver_avisos',  'Avisos',   'Ver os avisos prontos e copiar para o grupo'],
+  ['ver_links',   'Links',    'Ver os links importantes'],
+  ['ver_guias',   'Guias',    'Ver os guias e vídeos de classe']
+];
+// O que cada cargo pode criar e editar no conteúdo do site
+const PERM_CONTEUDO = [
+  ['gerenciar_avisos', 'Gerenciar avisos', 'Criar, editar e excluir avisos'],
+  ['gerenciar_links',  'Gerenciar links',  'Criar, editar e excluir links'],
+  ['gerenciar_guias',  'Gerenciar guias',  'Criar, editar e excluir guias']
 ];
 // O que cada cargo pode fazer na gestão (administradores do site têm tudo)
 const PERMISSOES = [
@@ -332,6 +373,9 @@ const rank = id => cargoDe(id)?.ordem ?? 999;
 const pode = p => isAdmin() || (S.eu?.status === 'ativo' && (cargoDe(S.eu.cargo)?.permissoes || []).includes(p));
 const temPainel = () => isAdmin() || PERMISSOES.some(([p]) => pode(p));
 const verPts = () => pode('ver_pts') || pode('gerenciar_pts');
+const verAvisos = () => pode('ver_avisos') || pode('gerenciar_avisos');
+const verLinks = () => pode('ver_links') || pode('gerenciar_links');
+const verGuias = () => pode('ver_guias') || pode('gerenciar_guias');
 // posso agir sobre esse membro? (precisa estar acima dele na hierarquia)
 const acimaDe = m => m.id !== S.eu.id && (isAdmin() || (!isAdminId(m.id) && rank(S.eu.cargo) < rank(m.cargo)));
 const ocupados = id => S.membros.filter(m => m.cargo === id && m.status === 'ativo').length;
@@ -424,7 +468,7 @@ function telaAuth(modo = 'entrar', aviso = '', erro = false) {
       <label>Senha<input name="senha" type="password" autocomplete="new-password" minlength="6" required></label>
       <label>Confirmar senha<input name="senha2" type="password" autocomplete="new-password" minlength="6" required></label>
       <button class="btn" type="submit">Criar conta</button>
-      <p class="muted" style="margin:0;font-size:.9rem">Depois de confirmar o email, um líder ou oficial precisa aprovar sua entrada.</p>`,
+      <p class="muted" style="margin:0;font-size:.9rem">Depois de confirmar o email, a liderança da guild precisa aprovar sua entrada.</p>`,
     recuperar: `
       <label>Email da conta<input name="email" type="email" autocomplete="email" required></label>
       <button class="btn" type="submit">Enviar link de recuperação</button>
@@ -500,7 +544,7 @@ function telaDiscord(aviso = '', erro = false) {
       ${aviso ? `<p class="aviso ${erro ? 'erro' : ''}">${aviso}</p>` : ''}
       <p style="margin-top:0">Entre com a conta do Discord que você usa no servidor da guild. Se for sua primeira vez, sua conta é criada na hora.</p>
       <button type="button" class="btn-discord" id="btn-discord">Entrar com Discord</button>
-      <p class="muted" style="margin:1rem 0 0;font-size:.9rem">Depois do primeiro acesso, um líder ou oficial precisa aprovar sua entrada.</p>
+      <p class="muted" style="margin:1rem 0 0;font-size:.9rem">Depois do primeiro acesso, a liderança da guild precisa aprovar sua entrada.</p>
     </div>
   </div></div>`;
   $('#btn-discord').onclick = () => entrarComDiscord(false);
@@ -603,7 +647,7 @@ function telaStatus() {
     <div class="auth-marca"><h1>${esc(CONFIG.NOME_GUILD)}</h1></div>
     <div class="auth-card">
       ${pend
-        ? `<p class="aviso">Sua conta está aguardando aprovação de um líder ou oficial. Enquanto isso, preencha seu perfil.</p>`
+        ? `<p class="aviso">Sua conta está aguardando aprovação da liderança da guild. Enquanto isso, preencha seu perfil.</p>`
         : `<p class="aviso erro">Sua conta está ${S.eu.status === 'recusado' ? 'recusada' : 'inativa'}. Fale com a liderança da guild.</p>`}
       ${pend && !S.eu.discord_id ? `<div class="linha" style="margin-bottom:1rem"><span class="muted">Conecte seu Discord para agilizar a aprovação.</span><span class="acoes"><button class="btn-discord" id="conectar-discord" type="button">Conectar Discord</button></span></div>` : ''}
       ${pend ? formPerfilHTML(S.eu) : ''}
@@ -640,6 +684,9 @@ function atualizarNav() {
     ${pode('ver_painel') ? '<a href="#painel">Painel</a>' : ''}
     ${pode('ver_membros') ? '<a href="#membros">Membros</a>' : ''}
     ${verPts() ? '<a href="#pts">PTs</a>' : ''}
+    ${verAvisos() ? '<a href="#avisos">Avisos</a>' : ''}
+    ${verLinks() ? '<a href="#links">Links</a>' : ''}
+    ${verGuias() ? '<a href="#guias">Guias</a>' : ''}
     <a href="#perfil">Meu perfil</a>
     ${temPainel() ? `<a href="#controle">Painel de controle${pend ? `<span class="badge" aria-label="${pend} pendentes">${pend}</span>` : ''}</a>` : ''}`;
   $('#eu-nick').textContent = S.eu.nick;
@@ -651,12 +698,14 @@ function marcarNav(r = (location.hash.slice(1) || 'painel').split('/')[0]) {
 function rota() {
   const view = $('#view');
   if (!view || S.eu?.status !== 'ativo') return;
-  const permitido = { painel: () => pode('ver_painel'), membros: () => pode('ver_membros'), pts: verPts, perfil: () => true, controle: temPainel };
+  const permitido = { painel: () => pode('ver_painel'), membros: () => pode('ver_membros'), pts: verPts,
+    avisos: verAvisos, links: verLinks, guias: verGuias, perfil: () => true, controle: temPainel };
   let [r, sub] = location.hash.slice(1).split('/');
-  if (!permitido[r]?.()) r = ['painel','membros','pts','perfil'].find(x => permitido[x]());
+  if (!permitido[r]?.()) r = ['painel','membros','pts','avisos','links','guias','perfil'].find(x => permitido[x]());
   marcarNav(r);
   view.onclick = null; view.onchange = null;
-  ({ painel:viewPainel, membros:viewMembros, pts:viewPts, perfil:viewPerfil, controle:viewControle }[r] || viewPainel)(view, sub);
+  ({ painel:viewPainel, membros:viewMembros, pts:viewPts, avisos:viewAvisos, links:viewLinks, guias:viewGuias,
+     perfil:viewPerfil, controle:viewControle }[r] || viewPerfil)(view, sub);
 }
 window.addEventListener('hashchange', rota);
 
@@ -1053,6 +1102,263 @@ function modalPt(p = null) {
 }
 
 // =====================================================================
+//  AVISOS, LINKS E GUIAS
+// =====================================================================
+const urlSegura = u => /^https?:\/\//i.test(u || '') ? u : '#';
+const inline = t => t
+  .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+  .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+// Formatação simples: # título, ## subtítulo, - lista, **negrito**, links automáticos
+function formatar(txt) {
+  let html = '', lista = false;
+  for (const l of esc(txt).split('\n')) {
+    const t = l.trim();
+    if (/^[-•] /.test(t)) { if (!lista) { html += '<ul>'; lista = true; } html += `<li>${inline(t.slice(2))}</li>`; continue; }
+    if (lista) { html += '</ul>'; lista = false; }
+    if (/^## /.test(t)) html += `<h4>${inline(t.slice(3))}</h4>`;
+    else if (/^# /.test(t)) html += `<h3>${inline(t.slice(2))}</h3>`;
+    else if (t) html += `<p>${inline(t)}</p>`;
+  }
+  return html + (lista ? '</ul>' : '');
+}
+const youtubeId = u => (u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/) || [])[1];
+const autor = id => S.membros.find(m => m.id === id)?.nick || 'alguém';
+const dominio = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+async function copiar(texto) {
+  try { await navigator.clipboard.writeText(texto); }
+  catch {
+    const t = document.createElement('textarea'); t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+  }
+}
+async function buscar(tabela, ordem, asc = true) {
+  const { data, error } = await sb.from(tabela).select('*').order(ordem, { ascending: asc });
+  if (error) throw error;
+  return data;
+}
+function chipsCategorias(cats, atual) {
+  if (cats.length < 2) return '';
+  return `<div class="chips" role="group" aria-label="Filtrar por categoria">
+    <button type="button" data-cat="" aria-pressed="${!atual}">Todas</button>
+    ${cats.map(c => `<button type="button" data-cat="${esc(c)}" aria-pressed="${atual === c}">${esc(c)}</button>`).join('')}</div>`;
+}
+
+// ---------- AVISOS ----------
+async function viewAvisos(view) {
+  view.innerHTML = '<div class="carregando">Carregando…</div>';
+  let avisos;
+  try { avisos = await buscar('avisos', 'atualizado_em', false); } catch (e) { view.innerHTML = `<p class="aviso erro">${esc(msgErro(e))}</p>`; return; }
+  if (!view.isConnected) return;
+  const edita = pode('gerenciar_avisos');
+  const cats = [...new Set(avisos.map(a => a.categoria))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  let filtro = '';
+  const desenhar = () => {
+    const lista = avisos.filter(a => !filtro || a.categoria === filtro);
+    view.innerHTML = `
+    <div class="cab"><h2>Avisos</h2><span class="muted">Textos prontos para copiar e colar no grupo</span>
+      ${edita ? '<div class="acoes"><button class="btn" id="novo">Novo aviso</button></div>' : ''}</div>
+    ${chipsCategorias(cats, filtro)}
+    ${lista.length ? `<div class="grade-cartoes">${lista.map(a => `
+      <article class="cartao aviso-cartao" data-id="${a.id}">
+        <header><div><h3>${esc(a.titulo)}</h3><span class="tag">${esc(a.categoria)}</span></div></header>
+        <pre class="texto-aviso">${esc(a.texto)}</pre>
+        <footer>
+          <button class="btn" data-acao="copiar">Copiar</button>
+          ${edita ? '<button class="btn-link" data-acao="editar">Editar</button><button class="btn-link perigo" data-acao="excluir">Excluir</button>' : ''}
+          <small class="muted">atualizado ${fmtCurta(a.atualizado_em)}</small>
+        </footer>
+      </article>`).join('')}</div>`
+      : `<p class="vazio-msg">Nenhum aviso ainda.${edita ? ' Use "Novo aviso" para criar o primeiro modelo.' : ''}</p>`}`;
+    $('#novo')?.addEventListener('click', () => modalAviso(null, cats));
+  };
+  view.onclick = async e => {
+    const c = e.target.closest('[data-cat]');
+    if (c) { filtro = c.dataset.cat; return desenhar(); }
+    const b = e.target.closest('[data-acao]'); if (!b) return;
+    const a = avisos.find(x => x.id === b.closest('[data-id]').dataset.id);
+    if (b.dataset.acao === 'copiar') {
+      await copiar(a.texto);
+      b.textContent = 'Copiado ✓'; setTimeout(() => { if (b.isConnected) b.textContent = 'Copiar'; }, 1800);
+    } else if (b.dataset.acao === 'editar') modalAviso(a, cats);
+    else if (b.dataset.acao === 'excluir' && confirm(`Excluir o aviso "${a.titulo}"?`)) {
+      const ok = await tentar(async () => { const { error } = await sb.from('avisos').delete().eq('id', a.id); if (error) throw error; }, 'Aviso excluído');
+      if (ok) rota();
+    }
+  };
+  desenhar();
+}
+function modalAviso(a, cats) {
+  modal.innerHTML = `
+    <div class="modal-topo"><h2>${a ? 'Editar aviso' : 'Novo aviso'}</h2><button class="fechar" aria-label="Fechar" data-fechar>×</button></div>
+    <form id="f-aviso" class="form-grid">
+      <label>Título<input name="titulo" required maxlength="80" value="${esc(a?.titulo)}" placeholder="Ex.: Chamada para WoE"></label>
+      <label>Categoria<input name="categoria" required maxlength="30" list="dl-cat-avisos" value="${esc(a?.categoria || 'Geral')}"></label>
+      <datalist id="dl-cat-avisos">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+      <label class="full">Texto<textarea name="texto" required maxlength="4000" rows="10" placeholder="Escreva como vai no grupo. *negrito* e _itálico_ do WhatsApp são mantidos ao copiar.">${esc(a?.texto)}</textarea></label>
+      <div class="full acoes"><button class="btn" type="submit">${a ? 'Salvar aviso' : 'Criar aviso'}</button></div>
+    </form>`;
+  abrirFormModal('f-aviso', async d => {
+    const dados = { titulo: d.titulo.trim(), categoria: d.categoria.trim(), texto: d.texto.replace(/\s+$/, '') };
+    const r = a ? await sb.from('avisos').update(dados).eq('id', a.id) : await sb.from('avisos').insert(dados);
+    if (r.error) throw r.error;
+  }, a ? 'Aviso salvo' : 'Aviso criado');
+}
+
+// ---------- LINKS ----------
+async function viewLinks(view) {
+  view.innerHTML = '<div class="carregando">Carregando…</div>';
+  let links;
+  try { links = await buscar('links', 'titulo'); } catch (e) { view.innerHTML = `<p class="aviso erro">${esc(msgErro(e))}</p>`; return; }
+  if (!view.isConnected) return;
+  const edita = pode('gerenciar_links');
+  const cats = [...new Set(links.map(l => l.categoria))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  view.innerHTML = `
+  <div class="cab"><h2>Links importantes</h2>${edita ? '<div class="acoes"><button class="btn" id="novo">Novo link</button></div>' : ''}</div>
+  ${links.length ? cats.map(c => `
+    <section class="bloco">
+      <h3>${esc(c)}</h3>
+      ${links.filter(l => l.categoria === c).map(l => `
+        <div class="linha link-linha" data-id="${l.id}">
+          <div><a href="${esc(urlSegura(l.url))}" target="_blank" rel="noopener" class="link-titulo">${esc(l.titulo)}</a>
+            <small class="muted">${esc(dominio(l.url))}</small>
+            ${l.descricao ? `<p class="muted" style="margin:.2rem 0 0">${esc(l.descricao)}</p>` : ''}</div>
+          ${edita ? '<span class="acoes"><button class="btn-link" data-acao="editar">Editar</button><button class="btn-link perigo" data-acao="excluir">Excluir</button></span>' : ''}
+        </div>`).join('')}
+    </section>`).join('')
+  : `<p class="vazio-msg">Nenhum link ainda.${edita ? ' Use "Novo link" para adicionar o primeiro.' : ''}</p>`}`;
+  $('#novo')?.addEventListener('click', () => modalLink(null, cats));
+  view.onclick = async e => {
+    const b = e.target.closest('[data-acao]'); if (!b) return;
+    const l = links.find(x => x.id === b.closest('[data-id]').dataset.id);
+    if (b.dataset.acao === 'editar') modalLink(l, cats);
+    else if (confirm(`Excluir o link "${l.titulo}"?`)) {
+      const ok = await tentar(async () => { const { error } = await sb.from('links').delete().eq('id', l.id); if (error) throw error; }, 'Link excluído');
+      if (ok) rota();
+    }
+  };
+}
+function modalLink(l, cats) {
+  modal.innerHTML = `
+    <div class="modal-topo"><h2>${l ? 'Editar link' : 'Novo link'}</h2><button class="fechar" aria-label="Fechar" data-fechar>×</button></div>
+    <form id="f-link" class="form-grid">
+      <label class="full">Título<input name="titulo" required maxlength="80" value="${esc(l?.titulo)}" placeholder="Ex.: Tabela de cartas"></label>
+      <label class="full">Endereço<input name="url" type="url" required maxlength="1000" value="${esc(l?.url)}" placeholder="https://"></label>
+      <label>Categoria<input name="categoria" required maxlength="30" list="dl-cat-links" value="${esc(l?.categoria || 'Geral')}"></label>
+      <datalist id="dl-cat-links">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+      <label class="full">Descrição<input name="descricao" maxlength="300" value="${esc(l?.descricao)}" placeholder="Opcional"></label>
+      <div class="full acoes"><button class="btn" type="submit">${l ? 'Salvar link' : 'Adicionar link'}</button></div>
+    </form>`;
+  abrirFormModal('f-link', async d => {
+    const url = d.url.trim();
+    if (!/^https?:\/\//i.test(url)) throw new Error('O endereço precisa começar com http:// ou https://');
+    const dados = { titulo: d.titulo.trim(), url, categoria: d.categoria.trim(), descricao: d.descricao.trim() || null };
+    const r = l ? await sb.from('links').update(dados).eq('id', l.id) : await sb.from('links').insert(dados);
+    if (r.error) throw r.error;
+  }, l ? 'Link salvo' : 'Link adicionado');
+}
+
+// ---------- GUIAS ----------
+async function viewGuias(view, sub) {
+  view.innerHTML = '<div class="carregando">Carregando…</div>';
+  let guias;
+  try { guias = await buscar('guias', 'atualizado_em', false); } catch (e) { view.innerHTML = `<p class="aviso erro">${esc(msgErro(e))}</p>`; return; }
+  if (!view.isConnected) return;
+  const edita = pode('gerenciar_guias');
+
+  if (sub) {
+    const g = guias.find(x => x.id === sub);
+    if (!g) { view.innerHTML = '<p class="vazio-msg">Esse guia não existe mais. <a href="#guias">Voltar para os guias</a></p>'; return; }
+    const c = classeDe(g.classe_id);
+    view.innerHTML = `
+    <p style="margin:0 0 1rem"><a href="#guias">← Todos os guias</a></p>
+    <article class="guia">
+      <header class="cab" style="margin-bottom:.4rem"><h2>${esc(g.titulo)}</h2>
+        ${edita ? '<div class="acoes"><button class="btn-sec" data-acao="editar">Editar</button><button class="btn-link perigo" data-acao="excluir">Excluir</button></div>' : ''}</header>
+      <p class="muted" style="margin-top:0">${c ? `<span class="classe" style="--c:${corArvore(c.arvore)}">${esc(c.nome)}</span>, ` : 'Guia geral, '}por ${esc(autor(g.criado_por))}, atualizado ${fmtCurta(g.atualizado_em)}</p>
+      ${g.conteudo ? `<div class="bloco conteudo-guia">${formatar(g.conteudo)}</div>` : ''}
+      ${g.videos.length ? `<section class="videos">${g.videos.map(v => {
+        const id = youtubeId(v);
+        return id
+          ? `<div><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${id}" title="Vídeo do guia" loading="lazy" allowfullscreen allow="encrypted-media; picture-in-picture"></iframe></div>
+             <small><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Abrir no YouTube</a></small></div>`
+          : `<p><a href="${esc(urlSegura(v))}" target="_blank" rel="noopener">${esc(v)}</a></p>`;
+      }).join('')}</section>` : ''}
+    </article>`;
+    view.onclick = async e => {
+      const b = e.target.closest('[data-acao]'); if (!b) return;
+      if (b.dataset.acao === 'editar') modalGuia(g);
+      else if (confirm(`Excluir o guia "${g.titulo}"?`)) {
+        const ok = await tentar(async () => { const { error } = await sb.from('guias').delete().eq('id', g.id); if (error) throw error; }, 'Guia excluído');
+        if (ok) location.hash = '#guias';
+      }
+    };
+    return;
+  }
+
+  let fClasse = S.filtroGuia ?? '', q = '';
+  view.innerHTML = `
+  <div class="cab"><h2>Guias</h2>${edita ? '<div class="acoes"><button class="btn" id="novo">Novo guia</button></div>' : ''}</div>
+  <div class="filtros">
+    <input id="g-busca" type="search" placeholder="Buscar guia" aria-label="Buscar guia">
+    <select id="g-classe" aria-label="Filtrar por classe"><option value="">Todas as classes</option><option value="geral">Guias gerais</option>${optClasses(null)}</select>
+  </div>
+  <div id="g-lista"></div>`;
+  $('#g-classe').value = fClasse;
+  const desenhar = () => {
+    q = $('#g-busca').value.trim().toLowerCase(); fClasse = S.filtroGuia = $('#g-classe').value;
+    const lista = guias.filter(g => (!q || g.titulo.toLowerCase().includes(q) || g.conteudo.toLowerCase().includes(q))
+      && (!fClasse || (fClasse === 'geral' ? !g.classe_id : g.classe_id === Number(fClasse))));
+    $('#g-lista').innerHTML = lista.length ? `<div class="grade-cartoes">${lista.map(g => {
+      const c = classeDe(g.classe_id);
+      return `<a class="cartao guia-cartao" href="#guias/${g.id}" style="--c:${c ? corArvore(c.arvore) : 'var(--line)'}">
+        <h3>${esc(g.titulo)}</h3>
+        <p class="muted" style="margin:.3rem 0 0">${c ? `<span class="classe">${esc(c.nome)}</span>` : 'Guia geral'}</p>
+        <small class="muted">${g.videos.length ? `${g.videos.length} ${g.videos.length === 1 ? 'vídeo' : 'vídeos'}, ` : ''}por ${esc(autor(g.criado_por))}</small>
+      </a>`;
+    }).join('')}</div>` : `<p class="vazio-msg">${guias.length ? 'Nenhum guia encontrado com esses filtros.' : `Nenhum guia ainda.${edita ? ' Use "Novo guia" para criar o primeiro.' : ''}`}</p>`;
+  };
+  $('#g-busca').oninput = desenhar; $('#g-classe').onchange = desenhar;
+  $('#novo')?.addEventListener('click', () => modalGuia(null));
+  desenhar();
+}
+function modalGuia(g) {
+  modal.innerHTML = `
+    <div class="modal-topo"><h2>${g ? 'Editar guia' : 'Novo guia'}</h2><button class="fechar" aria-label="Fechar" data-fechar>×</button></div>
+    <form id="f-guia" class="form-grid">
+      <label class="full">Título<input name="titulo" required maxlength="100" value="${esc(g?.titulo)}" placeholder="Ex.: Build de Sumo Sacerdote para WoE"></label>
+      <label class="full">Classe<select name="classe_id"><option value="">Guia geral (todas as classes)</option>${optClasses(g?.classe_id ?? null)}</select></label>
+      <label class="full">Conteúdo<textarea name="conteudo" rows="12" maxlength="20000" placeholder="# Título&#10;## Subtítulo&#10;- item de lista&#10;**negrito**">${esc(g?.conteudo)}</textarea>
+        <small class="muted"># título, ## subtítulo, - lista e **negrito**. Links são clicáveis automaticamente.</small></label>
+      <label class="full">Vídeos<textarea name="videos" rows="3" placeholder="Um link por linha (YouTube aparece dentro do guia)">${esc((g?.videos || []).join('\n'))}</textarea></label>
+      <div class="full acoes"><button class="btn" type="submit">${g ? 'Salvar guia' : 'Publicar guia'}</button></div>
+    </form>`;
+  abrirFormModal('f-guia', async d => {
+    const videos = d.videos.split('\n').map(v => v.trim()).filter(Boolean);
+    const ruim = videos.find(v => !/^https?:\/\//i.test(v));
+    if (ruim) throw new Error(`Link de vídeo inválido: ${ruim}`);
+    const dados = { titulo: d.titulo.trim(), classe_id: d.classe_id ? Number(d.classe_id) : null, conteudo: d.conteudo, videos };
+    const r = g ? await sb.from('guias').update(dados).eq('id', g.id).select().single() : await sb.from('guias').insert(dados).select().single();
+    if (r.error) throw r.error;
+    if (!g) location.hash = '#guias/' + r.data.id;
+  }, g ? 'Guia salvo' : 'Guia publicado');
+}
+
+// modal com formulário: salva, fecha e atualiza a tela
+function abrirFormModal(idForm, salvar, msg) {
+  modal.showModal();
+  modal.querySelector('[data-fechar]').onclick = () => modal.close();
+  const f = $('#' + idForm);
+  f.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!f.reportValidity()) return;
+    const btn = f.querySelector('[type=submit]'); btn.disabled = true;
+    const ok = await tentar(() => salvar(Object.fromEntries(new FormData(f))), msg);
+    btn.disabled = false;
+    if (ok) { modal.close(); rota(); }
+  };
+}
+
+// =====================================================================
 //  PAINEL DE CONTROLE
 // =====================================================================
 const SECOES_CTL = [
@@ -1223,6 +1529,8 @@ function ctlCargos(el) {
         }).join('')}</tr>` : ''}
         <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Acesso ao site</th></tr>
         ${ACESSOS.map(linhaPerm).join('')}
+        <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Avisos, links e guias</th></tr>
+        ${PERM_CONTEUDO.map(linhaPerm).join('')}
         <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Gestão da guild</th></tr>
         ${PERMISSOES.map(linhaPerm).join('')}
         ${edita ? `<tr><th scope="row"></th>${cs.map(c => `<td>${c.id === 'membro' ? '' : `<button class="btn-link perigo" data-excluir-cargo="${esc(c.id)}">Excluir</button>`}</td>`).join('')}</tr>` : ''}
