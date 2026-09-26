@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guild - Ragnarok Origin Classic</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#1b2036; --surface:#252b45; --surface-2:#2f3654; --line:#3d4568;
+  --text:#ede9df; --muted:#a6abc3; --gold:#e7b54f; --gold-ink:#2a2110;
+  --danger:#ec6a61; --ok:#74c690;
+  --font:'Alegreya Sans','Segoe UI',system-ui,sans-serif;
+  --display:'Alegreya SC',Georgia,serif;
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;height:100%}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  background:var(--bg) radial-gradient(120% 60% at 50% -10%,#2a3257 0%,transparent 60%) no-repeat;
+  color:var(--text);font:17px/1.5 var(--font);
+}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.15;margin:0}
+h2{font-size:1.7rem}
+h3{font-size:1.2rem}
+a{color:var(--gold)}
+.muted{color:var(--muted)}
+small{font-size:.85em}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* Botões */
+button{font:inherit;cursor:pointer}
+.btn{background:var(--gold);color:var(--gold-ink);border:0;border-radius:8px;padding:.55em 1.1em;font-weight:700}
+.btn:hover{filter:brightness(1.08)}
+.btn-sec{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:.5em 1em}
+.btn-sec:hover{border-color:var(--gold)}
+.btn-link{background:none;border:0;color:var(--gold);padding:.3em .4em;text-decoration:underline;text-underline-offset:3px}
+.perigo{color:var(--danger)}
+button:disabled{opacity:.5;cursor:default}
+
+/* Formulários */
+label{display:flex;flex-direction:column;gap:.3em;font-weight:500;font-size:.95rem}
+input,select,textarea{
+  font:inherit;color:var(--text);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:8px;padding:.5em .7em;width:100%;
+}
+textarea{resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem}
+.form-grid .full{grid-column:1/-1}
+.acoes{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+
+/* Login */
+.auth{min-height:100%;display:grid;place-items:center;padding:2rem 1rem}
+.auth-box{width:100%;max-width:400px}
+.auth-marca{text-align:center;margin-bottom:1.6rem}
+.auth-marca h1{font-size:2.4rem;color:var(--gold)}
+.auth-marca p{margin:.3em 0 0;color:var(--muted)}
+.auth-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.4rem}
+.abas{display:flex;gap:.3rem;margin-bottom:1.2rem;border-bottom:1px solid var(--line)}
+.abas button{background:none;border:0;color:var(--muted);padding:.5em .8em;border-bottom:2px solid transparent;margin-bottom:-1px}
+.abas button[aria-selected="true"]{color:var(--text);border-color:var(--gold)}
+.auth form{display:flex;flex-direction:column;gap:.9rem}
+.aviso{background:var(--surface-2);border-left:3px solid var(--gold);padding:.7em .9em;border-radius:6px;margin:0 0 1rem;font-size:.95rem}
+.aviso.erro{border-color:var(--danger)}
+
+/* Topo */
+.topo{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:5;
+  display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap;
+  padding:.7rem 1.4rem;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+}
+.marca{font-family:var(--display);font-size:1.35rem;color:var(--gold);font-weight:700}
+.topo nav{display:flex;gap:.2rem;flex-wrap:wrap;flex:1}
+.topo nav a{color:var(--muted);text-decoration:none;padding:.35em .7em;border-radius:6px}
+.topo nav a:hover{color:var(--text)}
+.topo nav a[aria-current="page"]{color:var(--text);background:var(--surface-2)}
+.badge{display:inline-block;min-width:1.4em;padding:0 .4em;margin-left:.3em;border-radius:99px;background:var(--danger);color:#fff;font-size:.78rem;text-align:center}
+.quem{display:flex;align-items:center;gap:.4rem;color:var(--muted)}
+main{max-width:1200px;margin:0 auto;padding:1.6rem 1.2rem 4rem}
+.cab{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem}
+.cab .acoes{margin-left:auto}
+.bloco{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.2rem}
+.bloco + .bloco{margin-top:1.2rem}
+.bloco h3{margin-bottom:.8rem}
+
+/* Classe e token */
+.classe{display:inline-flex;align-items:center;gap:.45em;white-space:nowrap}
+.classe::before{content:"";width:.6em;height:.6em;border-radius:50%;background:var(--c,#6b7190);flex:none}
+.token{
+  width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;
+  border:3px solid var(--c,#6b7190);background:color-mix(in srgb,var(--c,#6b7190) 22%,var(--surface));
+  font-family:var(--display);font-weight:700;font-size:.95rem;
+}
+.token.vazio{border:2px dashed var(--line);background:none}
+.token.grande{width:64px;height:64px;font-size:1.3rem}
+
+/* Painel: faixa da guild */
+.hero{margin-bottom:1.8rem}
+.hero h2{font-size:2.3rem}
+.hero .sub{color:var(--muted);margin:.2em 0 1rem}
+.faixa{display:flex;gap:2px;height:30px;border-radius:8px;overflow:hidden;background:var(--surface)}
+.faixa span{flex:1;min-width:3px;background:var(--c)}
+.faixa span.vazio{background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px)}
+.legenda{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.7rem;font-size:.95rem}
+.grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.2rem;align-items:start}
+.grade .bloco + .bloco{margin-top:0}
+.barras{display:flex;flex-direction:column;gap:.7rem;margin:0;padding:0;list-style:none}
+.barras li{display:grid;grid-template-columns:6.5em 1fr 2em;align-items:center;gap:.7rem}
+.barras li b{text-align:right}
+.barra{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+.barra span{display:block;height:100%;background:var(--c,var(--gold));border-radius:5px}
+.arvores{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem}
+.arvore{border-top:3px solid var(--c);padding-top:.5rem}
+.arvore.zerada{opacity:.45}
+.arvore h4{margin:0 0 .3rem;font-family:var(--display);font-size:1.05rem;display:flex;justify-content:space-between}
+.arvore ul{margin:0;padding:0;list-style:none;font-size:.95rem}
+.arvore li{display:flex;justify-content:space-between;color:var(--muted)}
+.arvore li b{color:var(--text)}
+.proximas{list-style:none;margin:0;padding:0}
+.proximas li{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--line)}
+.proximas li:last-child{border:0}
+
+/* Membros */
+.filtros{display:flex;flex-wrap:wrap;gap:.7rem;margin-bottom:1rem}
+.filtros > *{flex:1 1 150px;width:auto}
+.filtros input[type=search]{flex:2 1 220px}
+.tabela-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.tabela{width:100%;border-collapse:collapse}
+.tabela th{text-align:left;font-weight:500;color:var(--muted);font-size:.9rem;padding:.7rem .9rem;border-bottom:1px solid var(--line)}
+.tabela td{padding:.65rem .9rem;border-bottom:1px solid var(--line)}
+.tabela tbody tr{cursor:pointer}
+.tabela tbody tr:hover{background:var(--surface-2)}
+.tabela tbody tr:last-child td{border:0}
+.tabela .num{text-align:right;font-variant-numeric:tabular-nums}
+.nick{display:flex;align-items:center;gap:.6rem;font-weight:700}
+.nick .token{width:32px;height:32px;border-width:2px;font-size:.8rem}
+.cargo-lider{color:var(--gold)}
+@media (max-width:640px){ .c-opc{display:none} }
+
+/* PTs */
+.pts{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.2rem}
+.pt{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.1rem;display:flex;flex-direction:column;gap:.8rem}
+.pt > header{display:flex;justify-content:space-between;gap:1rem}
+.pt > header p{margin:.2em 0 0;font-size:.95rem}
+.vagas{font-family:var(--display);font-size:1.3rem;color:var(--ok)}
+.vagas.cheia{color:var(--gold)}
+.obs{margin:0;color:var(--muted);font-size:.95rem;white-space:pre-line}
+.slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.slot{display:flex;align-items:center;gap:.7rem}
+.slot small{color:var(--muted)}
+.slot .estrela{color:var(--gold)}
+.slot-acoes{margin-left:auto;display:flex;gap:.2rem}
+.slot-acoes button{background:none;border:1px solid transparent;border-radius:6px;color:var(--muted);width:30px;height:30px}
+.slot-acoes button:hover{border-color:var(--line);color:var(--text)}
+.slot-acoes button[aria-pressed="true"]{color:var(--gold)}
+.comp{margin:0;font-size:.92rem;color:var(--muted)}
+.alerta{color:var(--danger);margin-left:.5em}
+.pt > footer{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);padding-top:.8rem}
+.pt > footer select{width:auto;flex:1;min-width:150px}
+details.anteriores{margin-top:2rem}
+details.anteriores summary{cursor:pointer;color:var(--muted);margin-bottom:1rem}
+
+/* Admin */
+.linha{display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.linha:last-child{border:0}
+.linha .acoes{margin-left:auto}
+.tabela input,.tabela select{padding:.3em .5em}
+
+
+/* Painel de controle */
+.ctl{display:grid;grid-template-columns:200px minmax(0,1fr);gap:1.4rem;align-items:start}
+.ctl-menu{position:sticky;top:5.5rem;display:flex;flex-direction:column;gap:.15rem;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.5rem}
+.ctl-menu a{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.55em .8em;border-radius:8px;color:var(--muted);text-decoration:none}
+.ctl-menu a:hover{color:var(--text)}
+.ctl-menu a[aria-current]{background:var(--surface-2);color:var(--text);box-shadow:inset 3px 0 0 var(--gold)}
+#ctl-corpo > * + *{margin-top:1.2rem}
+@media (max-width:780px){
+  .ctl{grid-template-columns:1fr}
+  .ctl-menu{position:static;flex-direction:row;overflow-x:auto}
+  .ctl-menu a{white-space:nowrap}
+}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.9rem 1rem}
+.stat b{display:block;font-family:var(--display);font-size:2.1rem;line-height:1.1}
+.stat span{color:var(--muted);font-size:.95rem}
+.stat.destaque{border-color:var(--gold)}
+.stat.destaque b{color:var(--gold)}
+.quadro-cargos{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(128px,1fr);gap:.8rem;overflow-x:auto;padding-bottom:.3rem}
+.coluna-cargo{background:var(--surface-2);border-radius:10px;padding:.9rem .6rem 1.1rem;text-align:center;min-height:200px}
+.coluna-cargo h4{margin:0;font-family:var(--display);font-size:1.05rem;color:var(--gold);line-height:1.2}
+.vagas-cargo{display:block;font-weight:700;margin:.2rem 0 .8rem}
+.coluna-cargo ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.8rem;align-items:center}
+.pessoa{background:none;border:0;color:var(--text);display:inline-flex;align-items:center;gap:.6rem;padding:0;font-weight:700;text-align:left}
+.pessoa .token{width:34px;height:34px;border-width:2px;font-size:.82rem}
+.pessoa:hover span:last-child{text-decoration:underline}
+.coluna-cargo .pessoa{flex-direction:column;gap:.35rem;text-align:center}
+.coluna-cargo .pessoa .token{width:54px;height:54px;border-width:3px;font-size:1.05rem}
+.tabela-ctl tbody tr{cursor:default}
+.tabela-ctl select{width:auto;min-width:9em;padding:.3em .5em}
+.st{font-size:.9rem;padding:.1em .6em;border-radius:99px;background:var(--surface-2)}
+.st-pendente{color:var(--gold)}
+.st-inativo,.st-recusado{color:var(--muted)}
+.matriz tbody tr{cursor:default}
+.matriz th[scope=row]{min-width:15em;font-weight:500;color:var(--text);font-size:.95rem}
+.matriz th[scope=row] small{display:block;color:var(--muted);font-weight:400;font-size:.85rem}
+.matriz th[scope=row],.matriz thead th:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
+.matriz td{text-align:center;white-space:nowrap}
+.matriz thead th{text-align:center;color:var(--gold);font-family:var(--display);font-size:1rem;min-width:11em;vertical-align:bottom}
+.matriz thead input{text-align:center;font-weight:700;color:var(--gold);padding:.3em .4em}
+.matriz td input[type=number]{width:4.6em;display:inline-block;padding:.3em .4em}
+.matriz input[type=checkbox]{width:1.25rem;height:1.25rem;accent-color:var(--gold);cursor:pointer}
+.matriz input[type=checkbox]:disabled{cursor:default}
+.mover{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:6px;width:2rem;height:2rem;margin:0 .1rem}
+.registro{list-style:none;margin:0;padding:0}
+.registro li{display:grid;grid-template-columns:8em 1fr;gap:1rem;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.registro li:last-child{border:0}
+.registro time{color:var(--muted);font-variant-numeric:tabular-nums;font-size:.92rem}
+.perigo-borda{border-color:var(--danger);color:var(--danger)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Modal e toast */
+dialog{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:1.4rem;width:min(560px,calc(100% - 2rem));max-height:calc(100% - 2rem)}
+dialog::backdrop{background:rgba(10,12,24,.65)}
+.modal-topo{display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem}
+.modal-topo .fechar{margin-left:auto;background:none;border:0;color:var(--muted);font-size:1.5rem;line-height:1}
+dl.ficha{display:grid;grid-template-columns:9em 1fr;gap:.45rem 1rem;margin:0}
+dl.ficha dt{color:var(--muted)}
+dl.ficha dd{margin:0;white-space:pre-line;word-break:break-word}
+.gestao{margin-top:1.4rem;padding-top:1.2rem;border-top:1px solid var(--line)}
+#toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;
+  background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--ok);padding:.6em 1em;border-radius:8px;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+#toast.erro{border-left-color:var(--danger)}
+.carregando{min-height:60vh;display:grid;place-items:center;color:var(--muted)}
+.vazio-msg{color:var(--muted);text-align:center;padding:2rem 1rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"><div class="carregando">Carregando…</div></div>
+<dialog id="modal"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// =====================================================================
+//  CONFIGURAÇÃO - cole aqui os dados do seu projeto Supabase
+//  (Project Settings > API: "Project URL" e "anon public key")
+// =====================================================================
+const CONFIG = {
+  SUPABASE_URL: 'https://tkjpprrokafysrxfbxhi.supabase.co/rest/v1/',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRranBwcnJva2FmeXNyeGZieGhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MzA3MjgsImV4cCI6MjEwNjAwNjcyOH0.SC5e8q6gSdRXCHdyLE7ROlXIoBfCqhPOffiDIof39yc',
+  NOME_GUILD: 'LEGACY'
+};
+
+const CORES_ARVORE = {
+  Swordsman:'#e0625a', Mage:'#a88bff', Archer:'#7cc86f', Acolyte:'#7ec8f2',
+  Thief:'#4dbfae', Merchant:'#e8a93c', Gunslinger:'#b3b8c9'
+};
+const FUNCOES = { tank:'Tank', dps:'DPS', suporte:'Suporte', utilidade:'Utilidade' };
+const CORES_FUNCAO = { tank:'#e0625a', dps:'#e7b54f', suporte:'#7ec8f2', utilidade:'#a88bff' };
+const STATUS = { ativo:'Ativo', pendente:'Pendente', inativo:'Inativo', recusado:'Recusado' };
+// Permissões que podem ser ligadas/desligadas por cargo (o Líder tem todas)
+const PERMISSOES = [
+  ['aprovar_membros',   'Aprovar cadastros',          'Aceitar ou recusar quem pediu para entrar'],
+  ['gerenciar_status',  'Ativar e inativar membros',  'Tirar alguém da guild ou trazer de volta'],
+  ['atribuir_cargos',   'Atribuir cargos',            'Promover e rebaixar membros abaixo do próprio cargo'],
+  ['editar_membros',    'Editar perfis',              'Alterar classe, nível, poder e dados de outros membros'],
+  ['gerenciar_pts',     'Gerenciar PTs',              'Criar, editar e excluir PTs, colocar e tirar pessoas'],
+  ['gerenciar_classes', 'Gerenciar classes',          'Editar a lista de classes do jogo'],
+  ['ver_registro',      'Ver registro',               'Consultar o histórico de ações da liderança']
+];
+const TIPOS_PT = ['WoE','GvG','MVP','Dungeon','Farm','Outro'];
+const ETAPAS = { 1:'1ª classe', 2:'2ª classe', 3:'Trans', 4:'Avançada' };
+
+const configurado = !CONFIG.SUPABASE_URL.includes('SEU-PROJETO');
+const sb = configurado ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
+
+const S = { user:null, eu:null, classes:[], cargos:[], membros:[], parties:[], pm:[], recuperando:false, canal:null,
+            filtroCtl:{ q:'', status:'', cargo:'' } };
+const app = document.getElementById('app');
+const modal = document.getElementById('modal');
+
+// ---------- utilitários ----------
+const $ = (s, el = document) => el.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isLider = () => S.eu?.status === 'ativo' && S.eu.cargo === 'lider';
+const cargoDe = id => S.cargos.find(c => c.id === id);
+const nomeCargo = id => cargoDe(id)?.nome || id;
+const rank = id => cargoDe(id)?.ordem ?? 999;
+const pode = p => S.eu?.status === 'ativo' && (S.eu.cargo === 'lider' || (cargoDe(S.eu.cargo)?.permissoes || []).includes(p));
+const temPainel = () => isLider() || PERMISSOES.some(([p]) => pode(p));
+// posso agir sobre esse membro? (precisa estar acima dele na hierarquia)
+const acimaDe = m => m.id !== S.eu.id && (isLider() || rank(S.eu.cargo) < rank(m.cargo));
+const ocupados = id => S.membros.filter(m => m.cargo === id && m.status === 'ativo').length;
+const cargosOrdenados = () => [...S.cargos].sort((a, b) => a.ordem - b.ordem);
+const podeCargo = m => pode('atribuir_cargos') && acimaDe(m) && m.cargo !== 'lider';
+const podeEditar = m => pode('editar_membros') && acimaDe(m);
+const podeStatus = m => acimaDe(m) && (m.status === 'pendente' ? pode('aprovar_membros') : pode('gerenciar_status'));
+function opcoesCargo(m) {
+  return cargosOrdenados().filter(c => c.id !== 'lider' && (isLider() || c.ordem > rank(S.eu.cargo))).map(c => {
+    const n = ocupados(c.id), cheio = c.limite && n >= c.limite && m.cargo !== c.id;
+    return `<option value="${esc(c.id)}" ${m.cargo === c.id ? 'selected' : ''} ${cheio ? 'disabled' : ''}>${esc(c.nome)}${c.limite ? ` (${n}/${c.limite})` : ''}</option>`;
+  }).join('');
+}
+const slug = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'cargo';
+const classeDe = id => S.classes.find(c => c.id === id);
+const corArvore = a => CORES_ARVORE[a] || '#9aa0b5';
+const corMembro = m => { const c = classeDe(m?.classe_id); return c ? corArvore(c.arvore) : '#6b7190'; };
+const funcaoDe = m => m.funcao_preferida || classeDe(m.classe_id)?.funcao || null;
+const iniciais = n => esc((n || '?').trim().slice(0, 2));
+const numero = n => n == null ? '-' : Number(n).toLocaleString('pt-BR');
+const fmtData = iso => new Intl.DateTimeFormat('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }).format(new Date(iso));
+const paraInputLocal = iso => { if (!iso) return ''; const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+const urlBase = () => location.href.split('#')[0].split('?')[0];
+
+function toast(msg, erro = false) {
+  const t = $('#toast');
+  t.textContent = msg; t.className = 'show' + (erro ? ' erro' : '');
+  clearTimeout(t._t); t._t = setTimeout(() => t.className = '', 3200);
+}
+function msgErro(e) {
+  const m = e?.message || String(e);
+  if (/Invalid login credentials/i.test(m)) return 'Email ou senha incorretos.';
+  if (/Email not confirmed/i.test(m)) return 'Confirme seu email antes de entrar. Procure o link na caixa de entrada e no spam.';
+  if (/already registered/i.test(m)) return 'Esse email já tem conta. Use "Entrar" ou recupere a senha.';
+  if (/at least 6/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (/rate limit|too many/i.test(m)) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
+  if (/Failed to fetch/i.test(m)) return 'Sem conexão com o servidor. Verifique sua internet.';
+  return m;
+}
+async function tentar(fn, ok) {
+  try { await fn(); if (ok) toast(ok); return true; }
+  catch (e) { console.error(e); toast(msgErro(e), true); return false; }
+}
+function optClasses(sel) {
+  const grupos = {};
+  S.classes.filter(c => c.ativa || c.id === sel).forEach(c => (grupos[c.arvore] ??= []).push(c));
+  return Object.entries(grupos).map(([a, cs]) =>
+    `<optgroup label="${esc(a)}">${cs.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</optgroup>`
+  ).join('');
+}
+const arvores = () => [...new Set(S.classes.map(c => c.arvore))];
+function classeHTML(m) {
+  const c = classeDe(m.classe_id);
+  return c ? `<span class="classe" style="--c:${corArvore(c.arvore)}">${esc(c.nome)}</span>` : '<span class="muted">Sem classe</span>';
+}
+
+// =====================================================================
+//  AUTENTICAÇÃO
+// =====================================================================
+function telaAuth(modo = 'entrar', aviso = '', erro = false) {
+  const abas = modo === 'entrar' || modo === 'cadastrar';
+  const campos = {
+    entrar: `
+      <label>Email<input name="email" type="email" autocomplete="email" required></label>
+      <label>Senha<input name="senha" type="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Entrar</button>
+      <button class="btn-link" type="button" data-modo="recuperar">Esqueci minha senha</button>`,
+    cadastrar: `
+      <label>Nick no jogo<input name="nick" maxlength="24" minlength="2" required></label>
+      <label>Email<input name="email" type="email" autocomplete="email" required></label>
+      <label>Senha<input name="senha" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label>Confirmar senha<input name="senha2" type="password" autocomplete="new-password" minlength="6" required></label>
+      <button class="btn" type="submit">Criar conta</button>
+      <p class="muted" style="margin:0;font-size:.9rem">Depois de confirmar o email, um líder ou oficial precisa aprovar sua entrada.</p>`,
+    recuperar: `
+      <label>Email da conta<input name="email" type="email" autocomplete="email" required></label>
+      <button class="btn" type="submit">Enviar link de recuperação</button>
+      <button class="btn-link" type="button" data-modo="entrar">Voltar para o login</button>`,
+    'nova-senha': `
+      <label>Nova senha<input name="senha" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label>Confirmar nova senha<input name="senha2" type="password" autocomplete="new-password" minlength="6" required></label>
+      <button class="btn" type="submit">Salvar nova senha</button>`
+  };
+  const titulos = { recuperar:'Recuperar senha', 'nova-senha':'Definir nova senha' };
+
+  app.innerHTML = `
+  <div class="auth"><div class="auth-box">
+    <div class="auth-marca"><h1>${esc(CONFIG.NOME_GUILD)}</h1><p>Organização da guild em Ragnarok Origin Classic</p></div>
+    <div class="auth-card">
+      ${abas ? `<div class="abas" role="tablist">
+        <button type="button" role="tab" data-modo="entrar" aria-selected="${modo === 'entrar'}">Entrar</button>
+        <button type="button" role="tab" data-modo="cadastrar" aria-selected="${modo === 'cadastrar'}">Criar conta</button>
+      </div>` : `<h3 style="margin-bottom:1rem">${titulos[modo]}</h3>`}
+      ${aviso ? `<p class="aviso ${erro ? 'erro' : ''}">${aviso}</p>` : ''}
+      <form id="f-auth" novalidate>${campos[modo]}</form>
+    </div>
+  </div></div>`;
+
+  app.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => telaAuth(b.dataset.modo));
+  const f = $('#f-auth');
+  f.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!f.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(f));
+    const btn = f.querySelector('[type=submit]'); btn.disabled = true;
+    try {
+      if (modo === 'entrar') {
+        const { error } = await sb.auth.signInWithPassword({ email: d.email.trim(), password: d.senha });
+        if (error) throw error;
+      } else if (modo === 'cadastrar') {
+        if (d.senha !== d.senha2) throw new Error('As senhas não conferem.');
+        const { data, error } = await sb.auth.signUp({
+          email: d.email.trim(), password: d.senha,
+          options: { data: { nick: d.nick.trim() }, emailRedirectTo: urlBase() }
+        });
+        if (error) throw error;
+        if (data.user && data.user.identities?.length === 0) throw new Error('already registered');
+        if (!data.session) telaAuth('entrar', `Enviamos um link de confirmação para <b>${esc(d.email)}</b>. Confirme e depois entre com seu email e senha.`);
+      } else if (modo === 'recuperar') {
+        const { error } = await sb.auth.resetPasswordForEmail(d.email.trim(), { redirectTo: urlBase() });
+        if (error) throw error;
+        telaAuth('entrar', 'Se esse email tiver conta, você vai receber um link para criar uma nova senha.');
+      } else if (modo === 'nova-senha') {
+        if (d.senha !== d.senha2) throw new Error('As senhas não conferem.');
+        const { data, error } = await sb.auth.updateUser({ password: d.senha });
+        if (error) throw error;
+        S.recuperando = false; toast('Senha alterada');
+        history.replaceState(null, '', urlBase());
+        S.user = data.user; entrarNoApp();
+      }
+    } catch (e) {
+      telaAuth(modo, esc(msgErro(e)), true);
+      const f2 = $('#f-auth');
+      Object.entries(d).forEach(([k, v]) => { const i = f2.elements[k]; if (i && !/senha/.test(k)) i.value = v; });
+    }
+  };
+}
+
+async function sair() {
+  if (S.canal) { sb.removeChannel(S.canal); S.canal = null; }
+  await sb.auth.signOut();
+}
+
+// =====================================================================
+//  CARREGAMENTO
+// =====================================================================
+async function carregarClasses() {
+  const [c, g] = await Promise.all([
+    sb.from('classes').select('*').order('ordem').order('nome'),
+    sb.from('cargos').select('*').order('ordem')
+  ]);
+  if (c.error) throw c.error;
+  if (g.error) throw new Error('Tabela de cargos não encontrada. Rode o arquivo migracao-cargos.sql no Supabase.');
+  S.classes = c.data; S.cargos = g.data;
+}
+async function carregarTudo() {
+  const [m, p, pm] = await Promise.all([
+    sb.from('membros').select('*').order('nick'),
+    sb.from('parties').select('*').order('quando', { ascending: true, nullsFirst: false }),
+    sb.from('party_membros').select('*').order('entrou_em')
+  ]);
+  for (const r of [m, p, pm]) if (r.error) throw r.error;
+  S.membros = m.data; S.parties = p.data; S.pm = pm.data;
+  S.eu = S.membros.find(x => x.id === S.user.id) || S.eu;
+}
+async function recarregar() {
+  await tentar(async () => {
+    await carregarTudo();
+    if (S.eu.status !== 'ativo') { entrarNoApp(); return; }
+    atualizarNav(); rota();
+  });
+}
+
+async function entrarNoApp() {
+  app.innerHTML = '<div class="carregando">Carregando…</div>';
+  try {
+    const { data, error } = await sb.from('membros').select('*').eq('id', S.user.id).maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      app.innerHTML = `<div class="auth"><div class="auth-box"><div class="auth-card">
+        <p class="aviso erro">Seu perfil não foi encontrado. Confirme se o arquivo schema.sql foi executado no Supabase antes do cadastro.</p>
+        <button class="btn-sec" id="sair">Sair</button></div></div></div>`;
+      $('#sair').onclick = sair; return;
+    }
+    if (S.recuperando) return;
+    S.eu = data;
+    await carregarClasses();
+    if (S.recuperando) return;
+    if (data.status === 'ativo') {
+      await carregarTudo();
+      montarShell(); rota(); assinarTempoReal();
+    } else telaStatus();
+  } catch (e) {
+    app.innerHTML = `<div class="carregando"><p>${esc(msgErro(e))}</p></div>`;
+  }
+}
+
+function assinarTempoReal() {
+  if (S.canal) return;
+  let t;
+  const agendar = () => { clearTimeout(t); t = setTimeout(async () => {
+    const r = location.hash.slice(1) || 'painel';
+    if (modal.open || !['pts','painel','controle'].some(x => r.startsWith(x))) { await tentar(carregarTudo); atualizarNav(); return; }
+    recarregar();
+  }, 500); };
+  S.canal = sb.channel('guild')
+    .on('postgres_changes', { event:'*', schema:'public', table:'party_membros' }, agendar)
+    .on('postgres_changes', { event:'*', schema:'public', table:'parties' }, agendar)
+    .on('postgres_changes', { event:'*', schema:'public', table:'membros' }, agendar)
+    .on('postgres_changes', { event:'*', schema:'public', table:'cargos' }, async () => { await tentar(carregarClasses); agendar(); })
+    .subscribe();
+}
+
+// =====================================================================
+//  CONTA PENDENTE / RECUSADA
+// =====================================================================
+function telaStatus() {
+  const pend = S.eu.status === 'pendente';
+  app.innerHTML = `
+  <div class="auth" style="place-items:start center"><div style="width:100%;max-width:720px">
+    <div class="auth-marca"><h1>${esc(CONFIG.NOME_GUILD)}</h1></div>
+    <div class="auth-card">
+      ${pend
+        ? `<p class="aviso">Sua conta está aguardando aprovação de um líder ou oficial. Enquanto isso, preencha seu perfil.</p>`
+        : `<p class="aviso erro">Sua conta está ${S.eu.status === 'recusado' ? 'recusada' : 'inativa'}. Fale com a liderança da guild.</p>`}
+      ${pend ? formPerfilHTML(S.eu) : ''}
+      <div class="acoes" style="margin-top:1.2rem">
+        <button class="btn-sec" id="verificar">Verificar aprovação</button>
+        <button class="btn-link" id="sair">Sair</button>
+      </div>
+    </div>
+  </div></div>`;
+  $('#sair').onclick = sair;
+  $('#verificar').onclick = entrarNoApp;
+  if (pend) ligarPerfil(S.eu.id, () => {});
+}
+
+// =====================================================================
+//  ESTRUTURA E ROTAS
+// =====================================================================
+function montarShell() {
+  app.innerHTML = `
+  <header class="topo">
+    <div class="marca">${esc(CONFIG.NOME_GUILD)}</div>
+    <nav id="nav" aria-label="Seções"></nav>
+    <div class="quem"><span id="eu-nick"></span><button class="btn-link" id="sair">Sair</button></div>
+  </header>
+  <main id="view"></main>`;
+  $('#sair').onclick = sair;
+  atualizarNav();
+}
+function atualizarNav() {
+  const nav = $('#nav'); if (!nav) return;
+  const pend = pode('aprovar_membros') ? S.membros.filter(m => m.status === 'pendente').length : 0;
+  nav.innerHTML = `
+    <a href="#painel">Painel</a><a href="#membros">Membros</a><a href="#pts">PTs</a><a href="#perfil">Meu perfil</a>
+    ${temPainel() ? `<a href="#controle">Painel de controle${pend ? `<span class="badge" aria-label="${pend} pendentes">${pend}</span>` : ''}</a>` : ''}`;
+  $('#eu-nick').textContent = S.eu.nick;
+  marcarNav();
+}
+function marcarNav() {
+  const r = (location.hash.slice(1) || 'painel').split('/')[0];
+  document.querySelectorAll('#nav a').forEach(a => a.getAttribute('href') === '#' + r ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+}
+function rota() {
+  const view = $('#view');
+  if (!view || S.eu?.status !== 'ativo') return;
+  let [r, sub] = (location.hash.slice(1) || 'painel').split('/');
+  if (r === 'controle' && !temPainel()) r = 'painel';
+  marcarNav();
+  view.onclick = null; view.onchange = null;
+  ({ painel:viewPainel, membros:viewMembros, pts:viewPts, perfil:viewPerfil, controle:viewControle }[r] || viewPainel)(view, sub);
+}
+window.addEventListener('hashchange', rota);
+
+// =====================================================================
+//  PAINEL
+// =====================================================================
+function viewPainel(view) {
+  const ativos = S.membros.filter(m => m.status === 'ativo');
+  const porArvore = new Map(arvores().map(a => [a, []]));
+  const semClasse = [];
+  ativos.forEach(m => {
+    const c = classeDe(m.classe_id);
+    if (!c) return semClasse.push(m);
+    if (!porArvore.has(c.arvore)) porArvore.set(c.arvore, []);
+    porArvore.get(c.arvore).push(m);
+  });
+
+  const qtdFuncao = { tank:0, dps:0, suporte:0, utilidade:0 };
+  ativos.forEach(m => { const f = funcaoDe(m); if (f in qtdFuncao) qtdFuncao[f]++; });
+  const maxF = Math.max(1, ...Object.values(qtdFuncao));
+
+  const ordemClasse = m => classeDe(m.classe_id)?.ordem ?? 0;
+  const faixa = [...porArvore.entries()].flatMap(([a, ms]) =>
+    [...ms].sort((x, y) => ordemClasse(x) - ordemClasse(y)).map(m =>
+      `<span style="--c:${corArvore(a)}" title="${esc(m.nick)}: ${esc(classeDe(m.classe_id).nome)}"></span>`)
+  ).join('') + semClasse.map(m => `<span class="vazio" title="${esc(m.nick)}: sem classe"></span>`).join('');
+
+  const agora = Date.now() - 6 * 3600e3;
+  const proximas = S.parties.filter(p => p.quando && new Date(p.quando) >= agora).slice(0, 5);
+
+  view.innerHTML = `
+  <section class="hero">
+    <h2>${esc(CONFIG.NOME_GUILD)}</h2>
+    <p class="sub">${ativos.length} ${ativos.length === 1 ? 'membro ativo' : 'membros ativos'}${semClasse.length ? `, ${semClasse.length} sem classe definida` : ''}</p>
+    ${ativos.length ? `<div class="faixa" role="img" aria-label="Distribuição de classes da guild">${faixa}</div>` : ''}
+    <div class="legenda">${[...porArvore.entries()].filter(([, ms]) => ms.length).map(([a, ms]) =>
+      `<span class="classe" style="--c:${corArvore(a)}">${esc(a)} <b>${ms.length}</b></span>`).join('')}</div>
+  </section>
+
+  <div class="grade">
+    <section class="bloco">
+      <h3>Funções</h3>
+      <ul class="barras">${Object.entries(qtdFuncao).map(([f, n]) => `
+        <li><span>${FUNCOES[f]}</span><span class="barra"><span style="--c:${CORES_FUNCAO[f]};width:${n / maxF * 100}%"></span></span><b>${n}</b></li>`).join('')}
+      </ul>
+    </section>
+    <section class="bloco">
+      <h3>Próximas PTs</h3>
+      ${proximas.length ? `<ul class="proximas">${proximas.map(p => {
+        const n = S.pm.filter(x => x.party_id === p.id).length;
+        return `<li><span><b>${esc(p.nome)}</b><br><small class="muted">${esc(p.tipo)}, ${fmtData(p.quando)}</small></span><span>${n}/${p.max_membros}</span></li>`;
+      }).join('')}</ul>` : `<p class="muted" style="margin:0">Nenhuma PT agendada. <a href="#pts">Ver PTs</a></p>`}
+    </section>
+  </div>
+
+  <section class="bloco" style="margin-top:1.2rem">
+    <h3>Classes por árvore</h3>
+    <div class="arvores">${[...porArvore.entries()].map(([a, ms]) => {
+      const cont = {};
+      ms.forEach(m => { const c = classeDe(m.classe_id); cont[c.id] = (cont[c.id] || 0) + 1; });
+      const linhas = S.classes.filter(c => c.arvore === a && cont[c.id]).map(c => `<li><span>${esc(c.nome)}</span><b>${cont[c.id]}</b></li>`).join('');
+      return `<div class="arvore ${ms.length ? '' : 'zerada'}" style="--c:${corArvore(a)}">
+        <h4><span>${esc(a)}</span><span>${ms.length}</span></h4>
+        <ul>${linhas || '<li>Ninguém ainda</li>'}</ul></div>`;
+    }).join('')}</div>
+  </section>`;
+}
+
+// =====================================================================
+//  MEMBROS
+// =====================================================================
+function viewMembros(view) {
+  view.innerHTML = `
+  <div class="cab"><h2>Membros</h2><span class="muted" id="contagem"></span></div>
+  <div class="filtros">
+    <input id="busca" type="search" placeholder="Buscar por nick" aria-label="Buscar por nick">
+    <select id="f-arvore" aria-label="Filtrar por árvore"><option value="">Todas as árvores</option>${arvores().map(a => `<option>${esc(a)}</option>`).join('')}</select>
+    <select id="f-funcao" aria-label="Filtrar por função"><option value="">Todas as funções</option>${Object.entries(FUNCOES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+    <select id="f-ordem" aria-label="Ordenar">
+      <option value="nick">Ordenar por nick</option><option value="poder">Ordenar por poder</option>
+      <option value="nivel">Ordenar por nível</option><option value="classe">Ordenar por classe</option>
+    </select>
+    ${pode('gerenciar_status') || pode('aprovar_membros') ? `<select id="f-status" aria-label="Status"><option value="ativo">Ativos</option><option value="inativo">Inativos</option><option value="pendente">Pendentes</option></select>` : ''}
+  </div>
+  <div class="tabela-wrap"><table class="tabela">
+    <thead><tr><th>Nick</th><th>Classe</th><th class="num c-opc">Nível</th><th class="num">Poder</th><th class="c-opc">Função</th><th class="c-opc">Cargo</th></tr></thead>
+    <tbody id="lista"></tbody>
+  </table></div>`;
+
+  const desenhar = () => {
+    const q = $('#busca').value.trim().toLowerCase();
+    const arv = $('#f-arvore').value, fun = $('#f-funcao').value, ord = $('#f-ordem').value;
+    const st = $('#f-status')?.value || 'ativo';
+    let lista = S.membros.filter(m =>
+      m.status === st &&
+      (!q || m.nick.toLowerCase().includes(q)) &&
+      (!arv || classeDe(m.classe_id)?.arvore === arv) &&
+      (!fun || funcaoDe(m) === fun));
+    const cmp = {
+      nick: (a, b) => a.nick.localeCompare(b.nick, 'pt-BR'),
+      poder: (a, b) => (b.poder ?? -1) - (a.poder ?? -1),
+      nivel: (a, b) => (b.nivel ?? -1) - (a.nivel ?? -1),
+      classe: (a, b) => (classeDe(a.classe_id)?.ordem ?? 9999) - (classeDe(b.classe_id)?.ordem ?? 9999)
+    }[ord];
+    lista.sort(cmp);
+    $('#contagem').textContent = `${lista.length} ${lista.length === 1 ? 'resultado' : 'resultados'}`;
+    $('#lista').innerHTML = lista.length ? lista.map(m => `
+      <tr data-id="${m.id}" tabindex="0">
+        <td><span class="nick"><span class="token" style="--c:${corMembro(m)}">${iniciais(m.nick)}</span>${esc(m.nick)}</span></td>
+        <td>${classeHTML(m)}</td>
+        <td class="num c-opc">${m.nivel ?? '-'}</td>
+        <td class="num">${numero(m.poder)}</td>
+        <td class="c-opc">${FUNCOES[funcaoDe(m)] || '-'}</td>
+        <td class="c-opc ${m.cargo === 'lider' ? 'cargo-lider' : ''}">${esc(nomeCargo(m.cargo))}</td>
+      </tr>`).join('') : `<tr><td colspan="6" class="vazio-msg">Nenhum membro encontrado com esses filtros.</td></tr>`;
+  };
+  view.querySelectorAll('.filtros input, .filtros select').forEach(el => el.oninput = desenhar);
+  $('#lista').onclick = e => { const tr = e.target.closest('tr[data-id]'); if (tr) modalMembro(tr.dataset.id); };
+  $('#lista').onkeydown = e => { if (e.key === 'Enter') { const tr = e.target.closest('tr[data-id]'); if (tr) modalMembro(tr.dataset.id); } };
+  desenhar();
+}
+
+function modalMembro(id) {
+  const m = S.membros.find(x => x.id === id); if (!m) return;
+  const c = classeDe(m.classe_id);
+  const zap = (m.whatsapp || '').replace(/\D/g, '');
+  const pS = podeStatus(m), pC = podeCargo(m), pE = podeEditar(m);
+  modal.innerHTML = `
+    <div class="modal-topo">
+      <span class="token grande" style="--c:${corMembro(m)}">${iniciais(m.nick)}</span>
+      <div><h2>${esc(m.nick)}</h2>${classeHTML(m)}${c ? ` <small class="muted">${ETAPAS[c.etapa] || ''}</small>` : ''}</div>
+      <button class="fechar" aria-label="Fechar" data-fechar>×</button>
+    </div>
+    <dl class="ficha">
+      <dt>Cargo</dt><dd>${esc(nomeCargo(m.cargo))}</dd>
+      <dt>Status</dt><dd>${STATUS[m.status]}</dd>
+      <dt>Nível</dt><dd>${m.nivel ?? '-'}</dd>
+      <dt>Poder</dt><dd>${numero(m.poder)}</dd>
+      <dt>Função</dt><dd>${FUNCOES[funcaoDe(m)] || '-'}</dd>
+      <dt>Discord</dt><dd>${esc(m.discord) || '-'}</dd>
+      <dt>WhatsApp</dt><dd>${zap ? `<a href="https://wa.me/${zap.length <= 11 ? '55' + zap : zap}" target="_blank" rel="noopener">${esc(m.whatsapp)}</a>` : '-'}</dd>
+      <dt>Disponibilidade</dt><dd>${esc(m.disponibilidade) || '-'}</dd>
+      <dt>Observações</dt><dd>${esc(m.observacoes) || '-'}</dd>
+      <dt>Na guild desde</dt><dd>${new Date(m.criado_em).toLocaleDateString('pt-BR')}</dd>
+    </dl>
+    ${pS || pC || pE ? `
+    <form class="gestao form-grid" id="f-gestao">
+      ${pS ? `<label>Status<select name="status">${(m.status === 'pendente' ? ['pendente','ativo','recusado'] : ['ativo','inativo','recusado']).map(s => `<option value="${s}" ${m.status === s ? 'selected' : ''}>${STATUS[s]}</option>`).join('')}</select></label>` : ''}
+      ${pC ? `<label>Cargo<select name="cargo">${opcoesCargo(m)}</select></label>` : ''}
+      <div class="full acoes">
+        ${pS || pC ? `<button class="btn" type="submit">Salvar alterações</button>` : ''}
+        ${pE ? `<button class="btn-sec" type="button" id="editar-perfil">Editar perfil</button>` : ''}
+      </div>
+    </form>` : ''}`;
+  modal.showModal();
+  modal.querySelector('[data-fechar]').onclick = () => modal.close();
+  $('#editar-perfil')?.addEventListener('click', () => modalEditarPerfil(m));
+  const f = $('#f-gestao');
+  if (f) f.onsubmit = async ev => {
+    ev.preventDefault();
+    const d = Object.fromEntries(new FormData(f));
+    Object.keys(d).forEach(k => { if (d[k] === m[k]) delete d[k]; });
+    if (!Object.keys(d).length) return modal.close();
+    const ok = await tentar(async () => {
+      const { error } = await sb.from('membros').update(d).eq('id', m.id);
+      if (error) throw error;
+    }, 'Membro atualizado');
+    if (ok) { modal.close(); recarregar(); }
+  };
+}
+
+function modalEditarPerfil(m) {
+  modal.innerHTML = `
+    <div class="modal-topo"><h2>Editar perfil de ${esc(m.nick)}</h2><button class="fechar" aria-label="Fechar" data-fechar>×</button></div>
+    ${formPerfilHTML(m)}`;
+  if (!modal.open) modal.showModal();
+  modal.querySelector('[data-fechar]').onclick = () => modal.close();
+  ligarPerfil(m.id, () => { modal.close(); recarregar(); });
+}
+modal.addEventListener('click', e => {
+  if (e.target !== modal) return;
+  const r = modal.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) modal.close();
+});
+
+// =====================================================================
+//  PERFIL
+// =====================================================================
+function formPerfilHTML(m) {
+  return `
+  <form id="f-perfil" class="form-grid">
+    <label>Nick no jogo<input name="nick" required minlength="2" maxlength="24" value="${esc(m.nick)}"></label>
+    <label>Classe<select name="classe_id"><option value="">Selecione</option>${optClasses(m.classe_id)}</select></label>
+    <label>Nível base<input name="nivel" type="number" min="1" max="999" value="${m.nivel ?? ''}"></label>
+    <label>Poder (CP)<input name="poder" type="number" min="0" value="${m.poder ?? ''}"></label>
+    <label>Função na PT<select name="funcao_preferida"><option value="">Padrão da classe</option>${Object.entries(FUNCOES).map(([k, v]) => `<option value="${k}" ${m.funcao_preferida === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+    <label>Discord<input name="discord" maxlength="40" value="${esc(m.discord)}"></label>
+    <label>WhatsApp<input name="whatsapp" maxlength="20" inputmode="tel" placeholder="(91) 99999-9999" value="${esc(m.whatsapp)}"></label>
+    <label class="full">Disponibilidade<textarea name="disponibilidade" rows="2" maxlength="300" placeholder="Ex.: noites de segunda a sexta, WoE de sábado">${esc(m.disponibilidade)}</textarea></label>
+    <label class="full">Observações<textarea name="observacoes" rows="3" maxlength="600" placeholder="Build, equipamentos, cartas importantes…">${esc(m.observacoes)}</textarea></label>
+    <div class="full acoes"><button class="btn" type="submit">Salvar perfil</button></div>
+  </form>`;
+}
+function ligarPerfil(alvoId, depois) {
+  const f = $('#f-perfil');
+  f.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!f.reportValidity()) return;
+    const fd = new FormData(f);
+    const num = k => fd.get(k) === '' ? null : Number(fd.get(k));
+    const txt = k => (fd.get(k) || '').trim() || null;
+    const dados = {
+      nick: fd.get('nick').trim(), classe_id: num('classe_id'), nivel: num('nivel'), poder: num('poder'),
+      funcao_preferida: txt('funcao_preferida'), discord: txt('discord'), whatsapp: txt('whatsapp'),
+      disponibilidade: txt('disponibilidade'), observacoes: txt('observacoes')
+    };
+    await tentar(async () => {
+      const { data, error } = await sb.from('membros').update(dados).eq('id', alvoId).select().single();
+      if (error) throw error;
+      if (data.id === S.eu.id) S.eu = data;
+      S.membros = S.membros.map(x => x.id === data.id ? data : x);
+      if ($('#eu-nick')) $('#eu-nick').textContent = data.nick;
+      depois();
+    }, 'Perfil salvo');
+  };
+}
+function viewPerfil(view) {
+  const m = S.eu;
+  view.innerHTML = `
+  <div class="cab"><h2>Meu perfil</h2><span class="muted">${esc(nomeCargo(m.cargo))}, na guild desde ${new Date(m.criado_em).toLocaleDateString('pt-BR')}</span></div>
+  <section class="bloco">${formPerfilHTML(m)}</section>
+  <section class="bloco">
+    <h3>Alterar senha</h3>
+    <form id="f-senha" class="form-grid">
+      <label>Nova senha<input name="senha" type="password" minlength="6" autocomplete="new-password" required></label>
+      <label>Confirmar nova senha<input name="senha2" type="password" minlength="6" autocomplete="new-password" required></label>
+      <div class="full acoes"><button class="btn-sec" type="submit">Alterar senha</button></div>
+    </form>
+  </section>`;
+  ligarPerfil(S.eu.id, () => {});
+  const fs = $('#f-senha');
+  fs.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!fs.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(fs));
+    if (d.senha !== d.senha2) return toast('As senhas não conferem.', true);
+    const ok = await tentar(async () => { const { error } = await sb.auth.updateUser({ password: d.senha }); if (error) throw error; }, 'Senha alterada');
+    if (ok) fs.reset();
+  };
+}
+
+// =====================================================================
+//  PTs
+// =====================================================================
+const membrosDaPt = pid => S.pm.filter(x => x.party_id === pid)
+  .map(x => ({ ...x, m: S.membros.find(m => m.id === x.membro_id) })).filter(x => x.m);
+
+function cardPt(p) {
+  const lista = membrosDaPt(p.id);
+  const estou = lista.some(x => x.membro_id === S.eu.id);
+  const cheia = lista.length >= p.max_membros;
+  const comp = { tank:0, dps:0, suporte:0, utilidade:0 };
+  lista.forEach(x => { const f = funcaoDe(x.m); if (f in comp) comp[f]++; });
+  const resumo = Object.entries(comp).filter(([, n]) => n).map(([f, n]) => `${n} ${FUNCOES[f]}`).join(', ');
+  const alertas = [];
+  if (lista.length >= 2 && !comp.suporte) alertas.push('sem suporte');
+  if (lista.length >= 3 && !comp.tank) alertas.push('sem tank');
+  const disponiveis = S.membros.filter(m => m.status === 'ativo' && !lista.some(x => x.membro_id === m.id));
+  const staff = pode('gerenciar_pts');
+
+  const slots = lista.map(x => `
+    <li class="slot">
+      <span class="token" style="--c:${corMembro(x.m)}">${iniciais(x.m.nick)}</span>
+      <span><b>${esc(x.m.nick)}</b>${x.lider_pt ? ' <span class="estrela" title="Líder da PT">★</span>' : ''}<br><small>${classeDe(x.m.classe_id)?.nome ? esc(classeDe(x.m.classe_id).nome) : 'Sem classe'}${x.m.poder ? `, ${numero(x.m.poder)} CP` : ''}</small></span>
+      ${staff ? `<span class="slot-acoes">
+        <button type="button" data-acao="lider-pt" data-m="${x.membro_id}" aria-pressed="${x.lider_pt}" title="Líder da PT" aria-label="Marcar ${esc(x.m.nick)} como líder da PT">★</button>
+        <button type="button" data-acao="remover-pt" data-m="${x.membro_id}" title="Remover" aria-label="Remover ${esc(x.m.nick)} da PT">×</button>
+      </span>` : ''}
+    </li>`).join('') +
+    Array.from({ length: Math.max(0, p.max_membros - lista.length) }, () =>
+      `<li class="slot"><span class="token vazio"></span><span class="muted">Vaga livre</span></li>`).join('');
+
+  return `
+  <article class="pt" data-pt="${p.id}">
+    <header>
+      <div><h3>${esc(p.nome)}</h3><p class="muted">${esc(p.tipo)}${p.quando ? `, ${fmtData(p.quando)}` : ''}</p></div>
+      <span class="vagas ${cheia ? 'cheia' : ''}" title="Integrantes">${lista.length}/${p.max_membros}</span>
+    </header>
+    ${p.observacoes ? `<p class="obs">${esc(p.observacoes)}</p>` : ''}
+    <ul class="slots">${slots}</ul>
+    ${lista.length ? `<p class="comp">${resumo || 'Funções não definidas'}${alertas.map(a => `<span class="alerta">${a}</span>`).join('')}</p>` : ''}
+    <footer>
+      ${estou ? `<button class="btn-sec" data-acao="sair-pt">Sair da PT</button>` : (!cheia ? `<button class="btn" data-acao="entrar-pt">Entrar na PT</button>` : '')}
+      ${staff && !cheia && disponiveis.length ? `<select data-add aria-label="Adicionar membro"><option value="">Adicionar membro…</option>${disponiveis.map(m => `<option value="${m.id}">${esc(m.nick)} (${esc(classeDe(m.classe_id)?.nome || 'sem classe')})</option>`).join('')}</select>` : ''}
+      ${staff ? `<button class="btn-link" data-acao="editar-pt">Editar</button><button class="btn-link perigo" data-acao="excluir-pt">Excluir</button>` : ''}
+    </footer>
+  </article>`;
+}
+
+function viewPts(view) {
+  const limite = Date.now() - 6 * 3600e3;
+  const futuras = S.parties.filter(p => !p.quando || new Date(p.quando) >= limite);
+  const passadas = S.parties.filter(p => p.quando && new Date(p.quando) < limite).reverse();
+  view.innerHTML = `
+  <div class="cab"><h2>PTs</h2><span class="muted">${futuras.length} ${futuras.length === 1 ? 'ativa' : 'ativas'}</span>
+    ${pode('gerenciar_pts') ? `<div class="acoes"><button class="btn" id="nova-pt">Nova PT</button></div>` : ''}</div>
+  ${futuras.length ? `<div class="pts">${futuras.map(cardPt).join('')}</div>`
+    : `<p class="vazio-msg">Nenhuma PT montada.${pode('gerenciar_pts') ? ' Use "Nova PT" para criar a primeira.' : ' Quando a liderança criar uma PT, ela aparece aqui.'}</p>`}
+  ${passadas.length ? `<details class="anteriores"><summary>PTs anteriores (${passadas.length})</summary><div class="pts">${passadas.map(cardPt).join('')}</div></details>` : ''}`;
+
+  $('#nova-pt')?.addEventListener('click', () => modalPt());
+
+  view.onchange = async e => {
+    const sel = e.target.closest('select[data-add]'); if (!sel || !sel.value) return;
+    const pid = sel.closest('.pt').dataset.pt;
+    await tentar(async () => { const { error } = await sb.from('party_membros').insert({ party_id: pid, membro_id: sel.value }); if (error) throw error; }, 'Membro adicionado');
+    recarregar();
+  };
+  view.onclick = async e => {
+    const b = e.target.closest('[data-acao]'); if (!b) return;
+    const card = b.closest('.pt'); const pid = card?.dataset.pt;
+    const p = S.parties.find(x => x.id === pid);
+    const acoes = {
+      'entrar-pt': () => sb.from('party_membros').insert({ party_id: pid, membro_id: S.eu.id }),
+      'sair-pt': () => sb.from('party_membros').delete().match({ party_id: pid, membro_id: S.eu.id }),
+      'remover-pt': () => sb.from('party_membros').delete().match({ party_id: pid, membro_id: b.dataset.m }),
+      'lider-pt': async () => {
+        const marcar = b.getAttribute('aria-pressed') !== 'true';
+        if (marcar) { const r = await sb.from('party_membros').update({ lider_pt: false }).eq('party_id', pid); if (r.error) return r; }
+        return sb.from('party_membros').update({ lider_pt: marcar }).match({ party_id: pid, membro_id: b.dataset.m });
+      },
+      'excluir-pt': () => confirm(`Excluir a PT "${p.nome}"?`) ? sb.from('parties').delete().eq('id', pid) : null,
+      'editar-pt': () => { modalPt(p); return null; }
+    };
+    const fn = acoes[b.dataset.acao]; if (!fn) return;
+    b.disabled = true;
+    let mudou = false;
+    await tentar(async () => { const r = await fn(); if (r?.error) throw r.error; mudou = !!r; });
+    b.disabled = false;
+    if (mudou) recarregar();
+  };
+}
+
+function modalPt(p = null) {
+  modal.innerHTML = `
+    <div class="modal-topo"><h2>${p ? 'Editar PT' : 'Nova PT'}</h2><button class="fechar" aria-label="Fechar" data-fechar>×</button></div>
+    <form id="f-pt" class="form-grid">
+      <label class="full">Nome<input name="nome" required maxlength="60" value="${esc(p?.nome)}" placeholder="Ex.: PT 1 WoE, MVP Baphomet"></label>
+      <label>Tipo<select name="tipo">${TIPOS_PT.map(t => `<option ${p?.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label>Vagas<input name="max_membros" type="number" min="1" max="20" required value="${p?.max_membros ?? 5}"></label>
+      <label class="full">Data e hora<input name="quando" type="datetime-local" value="${paraInputLocal(p?.quando)}"></label>
+      <label class="full">Observações<textarea name="observacoes" rows="3" maxlength="600" placeholder="Ponto de encontro, requisitos, estratégia…">${esc(p?.observacoes)}</textarea></label>
+      <div class="full acoes"><button class="btn" type="submit">${p ? 'Salvar PT' : 'Criar PT'}</button></div>
+    </form>`;
+  modal.showModal();
+  modal.querySelector('[data-fechar]').onclick = () => modal.close();
+  const f = $('#f-pt');
+  f.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!f.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(f));
+    const dados = {
+      nome: d.nome.trim(), tipo: d.tipo, max_membros: Number(d.max_membros),
+      quando: d.quando ? new Date(d.quando).toISOString() : null,
+      observacoes: d.observacoes.trim() || null
+    };
+    if (p) {
+      const atuais = S.pm.filter(x => x.party_id === p.id).length;
+      if (dados.max_membros < atuais) return toast(`A PT já tem ${atuais} integrantes. Remova alguém antes de reduzir as vagas.`, true);
+    }
+    const ok = await tentar(async () => {
+      const r = p ? await sb.from('parties').update(dados).eq('id', p.id)
+                  : await sb.from('parties').insert({ ...dados, criado_por: S.eu.id });
+      if (r.error) throw r.error;
+    }, p ? 'PT salva' : 'PT criada');
+    if (ok) { modal.close(); recarregar(); }
+  };
+}
+
+// =====================================================================
+//  PAINEL DE CONTROLE
+// =====================================================================
+const SECOES_CTL = [
+  ['geral',    'Visão geral',          () => true],
+  ['membros',  'Membros',              () => true],
+  ['cargos',   'Cargos e permissões',  () => true],
+  ['classes',  'Classes',              () => pode('gerenciar_classes')],
+  ['registro', 'Registro',             () => pode('ver_registro')]
+];
+const fmtCurta = iso => new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }).format(new Date(iso));
+
+function viewControle(view, sub) {
+  const secoes = SECOES_CTL.filter(([, , ok]) => ok());
+  if (!secoes.some(([id]) => id === sub)) sub = 'geral';
+  const pend = pode('aprovar_membros') ? S.membros.filter(m => m.status === 'pendente').length : 0;
+  view.innerHTML = `
+  <div class="cab"><h2>Painel de controle</h2><span class="muted">${esc(nomeCargo(S.eu.cargo))}</span></div>
+  <div class="ctl">
+    <nav class="ctl-menu" aria-label="Seções do painel">${secoes.map(([id, nome]) =>
+      `<a href="#controle/${id}" ${id === sub ? 'aria-current="page"' : ''}>${nome}${id === 'membros' && pend ? `<span class="badge">${pend}</span>` : ''}</a>`).join('')}</nav>
+    <div id="ctl-corpo"></div>
+  </div>`;
+  const corpo = $('#ctl-corpo');
+  corpo.onclick = cliqueCtl;
+  ({ geral:ctlGeral, membros:ctlMembros, cargos:ctlCargos, classes:ctlClasses, registro:ctlRegistro })[sub](corpo);
+}
+
+async function mudarMembro(id, dados, msg) {
+  await tentar(async () => {
+    const { error } = await sb.from('membros').update(dados).eq('id', id);
+    if (error) throw error;
+  }, msg);
+  recarregar();
+}
+
+function cliqueCtl(e) {
+  const p = e.target.closest('.pessoa');
+  if (p) return modalMembro(p.dataset.id);
+  const st = e.target.closest('[data-status]');
+  if (st) { st.disabled = true; return mudarMembro(st.dataset.id, { status: st.dataset.status }, st.dataset.status === 'ativo' ? 'Cadastro aprovado' : 'Cadastro recusado'); }
+  const ed = e.target.closest('[data-editar]');
+  if (ed) return modalEditarPerfil(S.membros.find(m => m.id === ed.dataset.editar));
+}
+
+const pessoaHTML = m => `<button type="button" class="pessoa" data-id="${m.id}"><span class="token" style="--c:${corMembro(m)}">${iniciais(m.nick)}</span><span>${esc(m.nick)}</span></button>`;
+
+// ---------- visão geral ----------
+function ctlGeral(el) {
+  const qtd = st => S.membros.filter(m => m.status === st).length;
+  const limite = Date.now() - 6 * 3600e3;
+  const ptsAtivas = S.parties.filter(p => !p.quando || new Date(p.quando) >= limite).length;
+  const pend = S.membros.filter(m => m.status === 'pendente');
+  el.innerHTML = `
+  <div class="stats">
+    <div class="stat"><b>${qtd('ativo')}</b><span>Membros ativos</span></div>
+    <div class="stat ${pend.length ? 'destaque' : ''}"><b>${pend.length}</b><span>Aguardando aprovação</span></div>
+    <div class="stat"><b>${qtd('inativo')}</b><span>Inativos</span></div>
+    <div class="stat"><b>${ptsAtivas}</b><span>PTs ativas</span></div>
+  </div>
+  <section class="bloco">
+    <h3>Cargos da guild</h3>
+    <div class="quadro-cargos">${cargosOrdenados().filter(c => c.id !== 'membro').map(c => {
+      const ms = S.membros.filter(m => m.cargo === c.id && m.status === 'ativo');
+      return `<div class="coluna-cargo">
+        <h4>${esc(c.nome)}</h4>
+        <span class="vagas-cargo">(${ms.length}${c.limite ? '/' + c.limite : ''})</span>
+        <ul>${ms.map(m => `<li>${pessoaHTML(m)}</li>`).join('') || '<li class="muted">Vago</li>'}</ul>
+      </div>`;
+    }).join('')}</div>
+    <p class="muted" style="margin:.9rem 0 0">${esc(nomeCargo('membro'))}: ${ocupados('membro')}</p>
+  </section>
+  ${pode('aprovar_membros') ? `<section class="bloco">
+    <h3>Aguardando aprovação</h3>
+    ${pend.length ? pend.map(m => `
+      <div class="linha">
+        ${pessoaHTML(m)} ${classeHTML(m)}
+        <small class="muted">pediu em ${new Date(m.criado_em).toLocaleDateString('pt-BR')}</small>
+        <span class="acoes">
+          <button class="btn" data-status="ativo" data-id="${m.id}">Aprovar</button>
+          <button class="btn-link perigo" data-status="recusado" data-id="${m.id}">Recusar</button>
+        </span>
+      </div>`).join('') : '<p class="muted" style="margin:0">Nenhum cadastro pendente.</p>'}
+  </section>` : ''}`;
+}
+
+// ---------- membros ----------
+function ctlMembros(el) {
+  const F = S.filtroCtl;
+  el.innerHTML = `
+  <div class="filtros">
+    <input id="c-busca" type="search" placeholder="Buscar por nick" value="${esc(F.q)}" aria-label="Buscar por nick">
+    <select id="c-status" aria-label="Status"><option value="">Todos os status</option>${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${F.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    <select id="c-cargo" aria-label="Cargo"><option value="">Todos os cargos</option>${cargosOrdenados().map(c => `<option value="${esc(c.id)}" ${F.cargo === c.id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select>
+  </div>
+  <div class="tabela-wrap"><table class="tabela tabela-ctl">
+    <thead><tr><th>Nick</th><th class="c-opc">Classe</th><th>Cargo</th><th>Status</th><th><span class="sr">Ações</span></th></tr></thead>
+    <tbody id="c-lista"></tbody>
+  </table></div>`;
+
+  const ordemSt = { pendente:0, ativo:1, inativo:2, recusado:3 };
+  const desenhar = () => {
+    F.q = $('#c-busca').value; F.status = $('#c-status').value; F.cargo = $('#c-cargo').value;
+    const q = F.q.trim().toLowerCase();
+    const lista = S.membros
+      .filter(m => (!q || m.nick.toLowerCase().includes(q)) && (!F.status || m.status === F.status) && (!F.cargo || m.cargo === F.cargo))
+      .sort((a, b) => ordemSt[a.status] - ordemSt[b.status] || rank(a.cargo) - rank(b.cargo) || a.nick.localeCompare(b.nick, 'pt-BR'));
+    $('#c-lista').innerHTML = lista.length ? lista.map(m => {
+      let status;
+      if (m.status === 'pendente' && podeStatus(m))
+        status = `<button class="btn" data-status="ativo" data-id="${m.id}">Aprovar</button> <button class="btn-link perigo" data-status="recusado" data-id="${m.id}">Recusar</button>`;
+      else if (podeStatus(m))
+        status = `<select data-campo="status" aria-label="Status de ${esc(m.nick)}">${['ativo','inativo','recusado'].map(s => `<option value="${s}" ${m.status === s ? 'selected' : ''}>${STATUS[s]}</option>`).join('')}</select>`;
+      else status = `<span class="st st-${m.status}">${STATUS[m.status]}</span>`;
+      return `
+      <tr data-id="${m.id}">
+        <td>${pessoaHTML(m)}</td>
+        <td class="c-opc">${classeHTML(m)}</td>
+        <td>${podeCargo(m) && m.status === 'ativo'
+          ? `<select data-campo="cargo" aria-label="Cargo de ${esc(m.nick)}">${opcoesCargo(m)}</select>`
+          : `<span class="${m.cargo === 'lider' ? 'cargo-lider' : ''}">${esc(nomeCargo(m.cargo))}</span>`}</td>
+        <td>${status}</td>
+        <td>${podeEditar(m) ? `<button class="btn-link" data-editar="${m.id}">Editar</button>` : ''}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="5" class="vazio-msg">Ninguém encontrado com esses filtros.</td></tr>`;
+  };
+  el.querySelectorAll('.filtros input, .filtros select').forEach(x => x.oninput = desenhar);
+  $('#c-lista').onchange = e => {
+    const sel = e.target.closest('select[data-campo]'); if (!sel) return;
+    sel.disabled = true;
+    mudarMembro(sel.closest('tr').dataset.id, { [sel.dataset.campo]: sel.value }, 'Membro atualizado');
+  };
+  desenhar();
+}
+
+// ---------- cargos e permissões ----------
+async function salvarCargo(id, dados, msg) {
+  return tentar(async () => {
+    const { data, error } = await sb.from('cargos').update(dados).eq('id', id).select().single();
+    if (error) throw error;
+    S.cargos = S.cargos.map(c => c.id === id ? data : c);
+  }, msg);
+}
+
+function ctlCargos(el) {
+  const edita = isLider();
+  const cs = cargosOrdenados();
+  const meio = cs.filter(c => !['lider','membro'].includes(c.id));
+  el.innerHTML = `
+  <section class="bloco">
+    <h3>Cargos e permissões</h3>
+    <p class="muted" style="margin-top:0">${edita ? 'Marque o que cada cargo pode fazer. As mudanças valem na hora para todos.' : 'Somente o Líder pode alterar cargos e permissões.'}
+      Cada cargo só consegue agir sobre membros dos cargos à direita dele.</p>
+    <div class="tabela-wrap"><table class="tabela matriz">
+      <thead><tr><th scope="col">Permissão</th>${cs.map(c => `<th scope="col">${edita && c.id !== 'lider'
+        ? `<input data-cargo="${esc(c.id)}" name="nome" value="${esc(c.nome)}" maxlength="40" aria-label="Nome do cargo ${esc(c.nome)}">` : esc(c.nome)}</th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><th scope="row">Vagas<small>Ocupadas / limite (vazio = sem limite)</small></th>${cs.map(c => `<td>${ocupados(c.id)} / ${edita && c.id !== 'lider'
+          ? `<input data-cargo="${esc(c.id)}" name="limite" type="number" min="1" max="500" value="${c.limite ?? ''}" placeholder="∞" aria-label="Vagas de ${esc(c.nome)}">`
+          : (c.limite ?? '∞')}</td>`).join('')}</tr>
+        ${edita && meio.length > 1 ? `<tr><th scope="row">Posição<small>Ordem na hierarquia</small></th>${cs.map(c => {
+          const i = meio.indexOf(c);
+          return `<td>${i < 0 ? '' : `<button class="mover" data-mover="-1" data-cargo="${esc(c.id)}" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(c.nome)}">←</button><button class="mover" data-mover="1" data-cargo="${esc(c.id)}" ${i === meio.length - 1 ? 'disabled' : ''} aria-label="Descer ${esc(c.nome)}">→</button>`}</td>`;
+        }).join('')}</tr>` : ''}
+        ${PERMISSOES.map(([k, nome, desc]) => `<tr><th scope="row">${nome}<small>${desc}</small></th>${cs.map(c => {
+          const lid = c.id === 'lider';
+          return `<td><input type="checkbox" data-cargo="${esc(c.id)}" data-perm="${k}" ${lid || c.permissoes.includes(k) ? 'checked' : ''} ${!edita || lid ? 'disabled' : ''} aria-label="${nome}: ${esc(c.nome)}"></td>`;
+        }).join('')}</tr>`).join('')}
+        ${edita ? `<tr><th scope="row"></th>${cs.map(c => `<td>${['lider','membro'].includes(c.id) ? '' : `<button class="btn-link perigo" data-excluir-cargo="${esc(c.id)}">Excluir</button>`}</td>`).join('')}</tr>` : ''}
+      </tbody>
+    </table></div>
+    ${edita ? `
+    <form id="f-cargo" class="form-grid" style="margin-top:1.2rem">
+      <label>Novo cargo<input name="nome" required minlength="2" maxlength="40" placeholder="Ex.: Recrutador"></label>
+      <label>Vagas<input name="limite" type="number" min="1" max="500" placeholder="Sem limite"></label>
+      <div class="full acoes"><button class="btn-sec" type="submit">Criar cargo</button></div>
+    </form>` : ''}
+  </section>
+  ${edita ? `
+  <section class="bloco">
+    <h3>Transferir liderança</h3>
+    <p class="muted" style="margin-top:0">O novo líder recebe controle total do site, incluindo este painel. Você passa para o cargo escolhido.</p>
+    <form id="f-transferir" class="form-grid">
+      <label>Novo líder<select name="novo" required><option value="">Selecione</option>${S.membros.filter(m => m.status === 'ativo' && m.id !== S.eu.id)
+        .map(m => `<option value="${m.id}">${esc(m.nick)} (${esc(nomeCargo(m.cargo))})</option>`).join('')}</select></label>
+      <label>Seu novo cargo<select name="cargo">${cs.filter(c => c.id !== 'lider').map(c => `<option value="${esc(c.id)}" ${c.id === 'vice' ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></label>
+      <div class="full acoes"><button class="btn-sec perigo-borda" type="submit">Transferir liderança</button></div>
+    </form>
+  </section>` : ''}`;
+  if (!edita) return;
+
+  const tab = el.querySelector('.matriz');
+  tab.onchange = async e => {
+    const i = e.target, id = i.dataset.cargo; if (!id) return;
+    const c = cargoDe(id);
+    let dados;
+    if (i.dataset.perm) {
+      const set = new Set(c.permissoes);
+      i.checked ? set.add(i.dataset.perm) : set.delete(i.dataset.perm);
+      dados = { permissoes: [...set] };
+    } else if (i.name === 'nome') {
+      const v = i.value.trim();
+      if (v.length < 2) { toast('O nome do cargo precisa ter pelo menos 2 letras.', true); i.value = c.nome; return; }
+      dados = { nome: v };
+    } else if (i.name === 'limite') {
+      const v = i.value === '' ? null : Number(i.value);
+      if (v !== null && v < ocupados(id)) { toast(`${c.nome} já tem ${ocupados(id)} membros. Mude o cargo de alguém antes de reduzir as vagas.`, true); i.value = c.limite ?? ''; return; }
+      dados = { limite: v };
+    } else return;
+    const ok = await salvarCargo(id, dados, 'Cargo atualizado');
+    if (!ok) rota();
+  };
+  tab.onclick = async e => {
+    const mv = e.target.closest('[data-mover]');
+    if (mv) {
+      const ids = meio.map(c => c.id);
+      const i = ids.indexOf(mv.dataset.cargo), j = i + Number(mv.dataset.mover);
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+      await tentar(async () => {
+        for (let k = 0; k < ids.length; k++) {
+          if (cargoDe(ids[k]).ordem === k + 1) continue;
+          const { error } = await sb.from('cargos').update({ ordem: k + 1 }).eq('id', ids[k]);
+          if (error) throw error;
+        }
+      });
+      await tentar(carregarClasses); rota(); return;
+    }
+    const ex = e.target.closest('[data-excluir-cargo]');
+    if (ex) {
+      const c = cargoDe(ex.dataset.excluirCargo);
+      if (!confirm(`Excluir o cargo "${c.nome}"?`)) return;
+      const ok = await tentar(async () => { const { error } = await sb.from('cargos').delete().eq('id', c.id); if (error) throw error; }, 'Cargo excluído');
+      if (ok) { await tentar(carregarClasses); rota(); }
+    }
+  };
+
+  const fc = $('#f-cargo');
+  fc.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!fc.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(fc));
+    let id = slug(d.nome), n = 2;
+    while (cargoDe(id)) id = slug(d.nome) + '_' + n++;
+    const ordem = Math.max(0, ...meio.map(c => c.ordem)) + 1;
+    const ok = await tentar(async () => {
+      const { error } = await sb.from('cargos').insert({ id, nome: d.nome.trim(), ordem, limite: d.limite ? Number(d.limite) : null, permissoes: [] });
+      if (error) throw error;
+    }, 'Cargo criado');
+    if (ok) { await tentar(carregarClasses); rota(); }
+  };
+
+  const ft = $('#f-transferir');
+  ft.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!ft.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(ft));
+    const novo = S.membros.find(m => m.id === d.novo);
+    if (!confirm(`Passar a liderança para ${novo.nick}? Você vira ${nomeCargo(d.cargo)} e perde o controle total do site.`)) return;
+    const ok = await tentar(async () => {
+      const { error } = await sb.rpc('transferir_lideranca', { novo: d.novo, meu_novo_cargo: d.cargo });
+      if (error) throw error;
+    }, `${novo.nick} agora é o líder`);
+    if (ok) { location.hash = '#painel'; recarregar(); }
+  };
+}
+
+// ---------- classes ----------
+function ctlClasses(el) {
+  el.innerHTML = `
+  <section class="bloco">
+    <h3>Classes</h3>
+    <p class="muted" style="margin-top:0">Ajuste a lista conforme o jogo. Desativar uma classe só a esconde da seleção de novos perfis.</p>
+    <div class="tabela-wrap"><table class="tabela tabela-ctl" id="t-classes">
+      <thead><tr><th>Classe</th><th>Árvore</th><th>Função</th><th>Etapa</th><th>Ordem</th><th>Ativa</th></tr></thead>
+      <tbody>${S.classes.map(c => `
+        <tr data-cid="${c.id}">
+          <td><input name="nome" value="${esc(c.nome)}" aria-label="Nome"></td>
+          <td><input name="arvore" value="${esc(c.arvore)}" list="dl-arvores" aria-label="Árvore"></td>
+          <td><select name="funcao" aria-label="Função">${Object.entries(FUNCOES).map(([k, v]) => `<option value="${k}" ${c.funcao === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+          <td><select name="etapa" aria-label="Etapa">${Object.entries(ETAPAS).map(([k, v]) => `<option value="${k}" ${c.etapa == k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+          <td><input name="ordem" type="number" value="${c.ordem}" style="width:5.5em" aria-label="Ordem"></td>
+          <td><input name="ativa" type="checkbox" ${c.ativa ? 'checked' : ''} style="width:auto" aria-label="Ativa"></td>
+        </tr>`).join('')}</tbody>
+    </table></div>
+    <datalist id="dl-arvores">${arvores().map(a => `<option value="${esc(a)}">`).join('')}</datalist>
+    <form id="f-classe" class="form-grid" style="margin-top:1.2rem">
+      <label>Nova classe<input name="nome" required maxlength="40"></label>
+      <label>Árvore<input name="arvore" required list="dl-arvores" maxlength="30"></label>
+      <label>Função<select name="funcao">${Object.entries(FUNCOES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label>Etapa<select name="etapa">${Object.entries(ETAPAS).map(([k, v]) => `<option value="${k}" ${k === '2' ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <div class="full acoes"><button class="btn-sec" type="submit">Adicionar classe</button></div>
+    </form>
+  </section>`;
+
+  $('#t-classes').onchange = async e => {
+    const i = e.target, tr = i.closest('tr[data-cid]'); if (!tr) return;
+    let v = i.type === 'checkbox' ? i.checked : i.value.trim();
+    if (['etapa','ordem'].includes(i.name)) v = Number(v);
+    if (v === '') return toast('Esse campo não pode ficar vazio.', true);
+    await tentar(async () => {
+      const { error } = await sb.from('classes').update({ [i.name]: v }).eq('id', Number(tr.dataset.cid));
+      if (error) throw error;
+      await carregarClasses();
+    }, 'Classe atualizada');
+  };
+  const fc = $('#f-classe');
+  fc.onsubmit = async ev => {
+    ev.preventDefault();
+    if (!fc.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(fc));
+    const ordem = Math.max(0, ...S.classes.map(c => c.ordem)) + 1;
+    const ok = await tentar(async () => {
+      const { error } = await sb.from('classes').insert({ nome: d.nome.trim(), arvore: d.arvore.trim(), funcao: d.funcao, etapa: Number(d.etapa), ordem });
+      if (error) throw error;
+      await carregarClasses();
+    }, 'Classe adicionada');
+    if (ok) rota();
+  };
+}
+
+// ---------- registro ----------
+async function ctlRegistro(el) {
+  el.innerHTML = `<section class="bloco"><h3>Registro</h3><p class="muted" style="margin:0">Carregando…</p></section>`;
+  const { data, error } = await sb.from('registro').select('*').order('quando', { ascending: false }).limit(300);
+  if (!el.isConnected) return;
+  if (error) { el.innerHTML = `<section class="bloco"><p class="aviso erro">${esc(msgErro(error))}</p></section>`; return; }
+  el.innerHTML = `
+  <section class="bloco">
+    <div class="cab" style="margin-bottom:.8rem"><h3>Registro</h3><span class="muted">últimas ${data.length} ações</span></div>
+    <input id="r-busca" type="search" placeholder="Filtrar por nick ou ação" aria-label="Filtrar registro" style="margin-bottom:1rem">
+    <ol class="registro" id="r-lista"></ol>
+  </section>`;
+  const desenhar = () => {
+    const q = $('#r-busca').value.trim().toLowerCase();
+    const l = data.filter(r => !q || (r.autor_nick || '').toLowerCase().includes(q) || r.descricao.toLowerCase().includes(q));
+    $('#r-lista').innerHTML = l.length ? l.map(r => `
+      <li><time datetime="${r.quando}">${fmtCurta(r.quando)}</time>
+      <span><b>${esc(r.autor_nick || 'Alguém')}</b> ${esc(r.descricao.charAt(0).toLowerCase() + r.descricao.slice(1))}</span></li>`).join('')
+      : '<li class="muted">Nenhuma ação registrada ainda.</li>';
+  };
+  $('#r-busca').oninput = desenhar;
+  desenhar();
+}
+
+// =====================================================================
+//  INÍCIO
+// =====================================================================
+if (!configurado) {
+  app.innerHTML = `<div class="auth"><div class="auth-box"><div class="auth-card">
+    <h3 style="margin-bottom:.8rem">Falta configurar o Supabase</h3>
+    <p class="muted" style="margin:0">Abra o index.html, procure por <b>CONFIG</b> no início do script e cole a Project URL e a anon key do seu projeto.</p>
+  </div></div></div>`;
+} else {
+  if (/type=recovery/.test(location.hash)) S.recuperando = true;
+  sb.auth.onAuthStateChange((evento, sessao) => {
+    setTimeout(() => {
+      if (evento === 'PASSWORD_RECOVERY' || (S.recuperando && sessao && !$('#f-auth'))) { S.recuperando = true; telaAuth('nova-senha'); return; }
+      if (S.recuperando || evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') return;
+      if (!sessao) { S.user = null; S.eu = null; telaAuth(); return; }
+      if (S.user?.id === sessao.user.id && S.eu) return;
+      S.user = sessao.user;
+      if (location.hash.includes('access_token')) history.replaceState(null, '', urlBase());
+      entrarNoApp();
+    }, 0);
+  });
+}
+</script>
+</body>
+</html>
