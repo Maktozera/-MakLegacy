@@ -22,6 +22,7 @@
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{
@@ -276,6 +277,31 @@ label.check input{width:1.2rem;height:1.2rem;accent-color:var(--gold)}
 .video{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#000}
 .video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
+
+/* Cargos e permissões */
+.tabela-cargos tbody tr{cursor:default}
+.tabela-cargos td{padding:.45rem .7rem;vertical-align:middle}
+.tabela-cargos input{padding:.35em .6em}
+.tabela-cargos input[name=nome]{min-width:12rem}
+.tabela-cargos input[name=limite]{width:8.5em}
+.col-pos{width:5.4rem;white-space:nowrap}
+.form-linha{display:flex;flex-wrap:wrap;gap:.8rem;align-items:flex-end;margin-top:1.1rem}
+.form-linha label{flex:0 1 14rem}
+.matriz-wrap{overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.matriz2{width:100%;border-collapse:separate;border-spacing:0}
+.matriz2 thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);color:var(--gold);font-family:var(--display);font-size:.92rem;font-weight:700;line-height:1.15;padding:.7rem .35rem;text-align:center;vertical-align:bottom;min-width:5.6rem;border-bottom:1px solid var(--line)}
+.matriz2 thead th.perm-col{left:0;z-index:3;text-align:left;color:var(--muted);font-family:var(--font);font-weight:500;padding-left:.9rem}
+.matriz2 tbody th[scope=row]{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;font-weight:400;padding:.45rem .9rem;min-width:12.5rem;max-width:17rem;border-bottom:1px solid var(--line)}
+.matriz2 tbody th[scope=row] b{display:block;font-weight:500;font-size:.95rem}
+.matriz2 tbody th[scope=row] small{display:block;color:var(--muted);font-size:.8rem;line-height:1.3}
+.matriz2 td{text-align:center;padding:0;border-bottom:1px solid var(--line)}
+.matriz2 .chk{display:flex;align-items:center;justify-content:center;min-height:2.9rem;cursor:pointer}
+.matriz2 input[type=checkbox]{width:1.2rem;height:1.2rem;accent-color:var(--gold);cursor:pointer}
+.matriz2 input[type=checkbox]:disabled{cursor:default}
+.matriz2 tbody tr:not(.grupo):hover > *{background:var(--surface-2)}
+.matriz2 tr.grupo th{position:sticky;left:0;background:var(--bg);color:var(--gold);font-weight:500;font-size:.85rem;text-align:left;padding:.5rem .9rem;border-bottom:1px solid var(--line)}
+.limpar{margin-top:0;padding:.9rem;border-radius:10px;background:var(--surface-2)}
+
 /* Modal e toast */
 dialog{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:1.4rem;width:min(560px,calc(100% - 2rem));max-height:calc(100% - 2rem)}
 dialog::backdrop{background:rgba(10,12,24,.65)}
@@ -333,6 +359,7 @@ const ACESSOS = [
   ['ver_avisos',  'Avisos',   'Ver os avisos prontos e copiar para o grupo'],
   ['ver_links',   'Links',    'Ver os links importantes'],
   ['ver_guias',   'Guias',    'Ver os guias e vídeos de classe'],
+  ['ver_painel_controle', 'Painel de controle', 'Ver o painel da liderança (as ações dependem da Gestão da guild)'],
   ['ver_contatos','WhatsApp dos membros', 'Ver o telefone de todos os membros (cada um sempre vê o próprio)']
 ];
 // O que cada cargo pode criar e editar no conteúdo do site
@@ -372,7 +399,7 @@ const cargoDe = id => S.cargos.find(c => c.id === id);
 const nomeCargo = id => cargoDe(id)?.nome || id;
 const rank = id => cargoDe(id)?.ordem ?? 999;
 const pode = p => isAdmin() || (S.eu?.status === 'ativo' && (cargoDe(S.eu.cargo)?.permissoes || []).includes(p));
-const temPainel = () => isAdmin() || PERMISSOES.some(([p]) => pode(p));
+const temPainel = () => isAdmin() || pode('ver_painel_controle');
 const verPts = () => pode('ver_pts') || pode('gerenciar_pts');
 const verAvisos = () => pode('ver_avisos') || pode('gerenciar_avisos');
 const verLinks = () => pode('ver_links') || pode('gerenciar_links');
@@ -1531,53 +1558,54 @@ function ctlCargos(el) {
   const edita = isAdmin();
   const cs = cargosOrdenados();
   const moveis = cs.filter(c => c.id !== 'membro');
-  const linhaPerm = ([k, nome, desc]) => `<tr><th scope="row">${nome}<small>${desc}</small></th>${cs.map(c =>
-    `<td><input type="checkbox" data-cargo="${esc(c.id)}" data-perm="${k}" ${c.permissoes.includes(k) ? 'checked' : ''} ${edita ? '' : 'disabled'} aria-label="${nome}: ${esc(c.nome)}"></td>`).join('')}</tr>`;
+  const grupos = [['Acesso ao site', ACESSOS], ['Avisos, links e guias', PERM_CONTEUDO], ['Gestão da guild', PERMISSOES]];
   el.innerHTML = `
   <section class="bloco">
-    <h3>Cargos e acessos</h3>
-    <p class="muted" style="margin-top:0">${edita ? 'Marque o que cada cargo pode ver e fazer no site. As mudanças valem na hora para todos.' : 'Somente administradores do site alteram cargos e acessos.'}
-      Cada cargo só consegue agir sobre membros dos cargos à direita dele. Administradores do site têm acesso a tudo, independente do cargo.</p>
-    <div class="tabela-wrap"><table class="tabela matriz">
-      <thead><tr><th scope="col">Cargo</th>${cs.map(c => `<th scope="col">${edita
-        ? `<input data-cargo="${esc(c.id)}" name="nome" value="${esc(c.nome)}" maxlength="40" aria-label="Nome do cargo ${esc(c.nome)}">` : esc(c.nome)}</th>`).join('')}</tr></thead>
-      <tbody>
-        <tr><th scope="row">Vagas<small>Ocupadas / limite (vazio = sem limite)</small></th>${cs.map(c => `<td>${ocupados(c.id)} / ${edita
-          ? `<input data-cargo="${esc(c.id)}" name="limite" type="number" min="1" max="500" value="${c.limite ?? ''}" placeholder="∞" aria-label="Vagas de ${esc(c.nome)}">`
-          : (c.limite ?? '∞')}</td>`).join('')}</tr>
-        ${edita && moveis.length > 1 ? `<tr><th scope="row">Posição<small>Ordem na hierarquia</small></th>${cs.map(c => {
-          const i = moveis.indexOf(c);
-          return `<td>${i < 0 ? '' : `<button class="mover" data-mover="-1" data-cargo="${esc(c.id)}" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(c.nome)}">←</button><button class="mover" data-mover="1" data-cargo="${esc(c.id)}" ${i === moveis.length - 1 ? 'disabled' : ''} aria-label="Descer ${esc(c.nome)}">→</button>`}</td>`;
-        }).join('')}</tr>` : ''}
-        <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Acesso ao site</th></tr>
-        ${ACESSOS.map(linhaPerm).join('')}
-        <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Avisos, links e guias</th></tr>
-        ${PERM_CONTEUDO.map(linhaPerm).join('')}
-        <tr class="grupo"><th scope="rowgroup" colspan="${cs.length + 1}">Gestão da guild</th></tr>
-        ${PERMISSOES.map(linhaPerm).join('')}
-        ${edita ? `<tr><th scope="row"></th>${cs.map(c => `<td>${c.id === 'membro' ? '' : `<button class="btn-link perigo" data-excluir-cargo="${esc(c.id)}">Excluir</button>`}</td>`).join('')}</tr>` : ''}
-      </tbody>
+    <h3>Cargos</h3>
+    <p class="muted" style="margin-top:0">${edita ? 'A ordem da lista é a hierarquia: cada cargo só age sobre os que estão abaixo dele.' : 'Somente administradores do site alteram cargos e permissões.'}</p>
+    <div class="tabela-wrap"><table class="tabela tabela-cargos">
+      <thead><tr>${edita ? '<th class="col-pos"><span class="sr">Posição</span></th>' : ''}<th>Cargo</th><th class="num">Membros</th><th>Vagas</th>${edita ? '<th><span class="sr">Ações</span></th>' : ''}</tr></thead>
+      <tbody>${cs.map(c => {
+        const i = moveis.indexOf(c);
+        return `<tr data-cargo="${esc(c.id)}">
+          ${edita ? `<td class="col-pos">${i < 0 ? '' : `<button class="mover" data-mover="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(c.nome)}">↑</button><button class="mover" data-mover="1" ${i === moveis.length - 1 ? 'disabled' : ''} aria-label="Descer ${esc(c.nome)}">↓</button>`}</td>` : ''}
+          <td>${edita ? `<input name="nome" value="${esc(c.nome)}" maxlength="40" aria-label="Nome do cargo">` : `<b>${esc(c.nome)}</b>`}</td>
+          <td class="num">${ocupados(c.id)}</td>
+          <td>${edita ? `<input name="limite" type="number" min="1" max="500" value="${c.limite ?? ''}" placeholder="Sem limite" aria-label="Vagas de ${esc(c.nome)}">` : (c.limite ?? 'Sem limite')}</td>
+          ${edita ? `<td>${c.id === 'membro' ? '<small class="muted">Cargo de entrada</small>' : '<button class="btn-link perigo" data-excluir-cargo>Excluir</button>'}</td>` : ''}
+        </tr>`;
+      }).join('')}</tbody>
     </table></div>
-    <p class="muted" style="margin:.8rem 0 0;font-size:.92rem">"Meu perfil" fica sempre disponível. Quem não tem acesso a Membros ainda aparece no Painel e nas PTs, mas sem contatos e observações.</p>
     ${edita ? `
-    <form id="f-cargo" class="form-grid" style="margin-top:1.2rem">
+    <form id="f-cargo" class="form-linha">
       <label>Novo cargo<input name="nome" required minlength="2" maxlength="40" placeholder="Ex.: Recrutador"></label>
       <label>Vagas<input name="limite" type="number" min="1" max="500" placeholder="Sem limite"></label>
-      <div class="full acoes"><button class="btn-sec" type="submit">Criar cargo</button></div>
+      <button class="btn-sec" type="submit">Criar cargo</button>
     </form>` : ''}
+  </section>
+
+  <section class="bloco">
+    <h3>Permissões</h3>
+    <p class="muted" style="margin-top:0">${edita ? 'Clique na caixa para ligar ou desligar. Vale na hora para todos.' : ''} Administradores do site têm tudo, independente do cargo. "Meu perfil" fica sempre disponível.</p>
+    <div class="matriz-wrap"><table class="matriz2">
+      <thead><tr><th class="perm-col" scope="col">Permissão</th>${cs.map(c => `<th scope="col">${esc(c.nome)}</th>`).join('')}</tr></thead>
+      ${grupos.map(([nome, lista]) => `<tbody>
+        <tr class="grupo"><th colspan="${cs.length + 1}" scope="rowgroup">${nome}</th></tr>
+        ${lista.map(([k, n, d]) => `<tr>
+          <th scope="row"><b>${n}</b><small>${d}</small></th>
+          ${cs.map(c => `<td><label class="chk"><input type="checkbox" data-cargo="${esc(c.id)}" data-perm="${k}" ${c.permissoes.includes(k) ? 'checked' : ''} ${edita ? '' : 'disabled'} aria-label="${n}: ${esc(c.nome)}"></label></td>`).join('')}
+        </tr>`).join('')}
+      </tbody>`).join('')}
+    </table></div>
   </section>`;
   if (!edita) return;
 
-  const tab = el.querySelector('.matriz');
-  tab.onchange = async e => {
-    const i = e.target, id = i.dataset.cargo; if (!id) return;
+  const tc = el.querySelector('.tabela-cargos');
+  tc.onchange = async e => {
+    const i = e.target, id = i.closest('tr')?.dataset.cargo; if (!id) return;
     const c = cargoDe(id);
     let dados;
-    if (i.dataset.perm) {
-      const set = new Set(c.permissoes);
-      i.checked ? set.add(i.dataset.perm) : set.delete(i.dataset.perm);
-      dados = { permissoes: [...set] };
-    } else if (i.name === 'nome') {
+    if (i.name === 'nome') {
       const v = i.value.trim();
       if (v.length < 2) { toast('O nome do cargo precisa ter pelo menos 2 letras.', true); i.value = c.nome; return; }
       dados = { nome: v };
@@ -1586,14 +1614,15 @@ function ctlCargos(el) {
       if (v !== null && v < ocupados(id)) { toast(`${c.nome} já tem ${ocupados(id)} membros. Mude o cargo de alguém antes de reduzir as vagas.`, true); i.value = c.limite ?? ''; return; }
       dados = { limite: v };
     } else return;
-    const ok = await salvarCargo(id, dados, 'Cargo atualizado');
-    if (!ok) rota();
+    await salvarCargo(id, dados, 'Cargo atualizado');
+    rota();
   };
-  tab.onclick = async e => {
+  tc.onclick = async e => {
+    const tr = e.target.closest('tr[data-cargo]'); if (!tr) return;
     const mv = e.target.closest('[data-mover]');
     if (mv) {
       const ids = moveis.map(c => c.id);
-      const i = ids.indexOf(mv.dataset.cargo), j = i + Number(mv.dataset.mover);
+      const i = ids.indexOf(tr.dataset.cargo), j = i + Number(mv.dataset.mover);
       [ids[i], ids[j]] = [ids[j], ids[i]];
       await tentar(async () => {
         for (let k = 0; k < ids.length; k++) {
@@ -1604,13 +1633,22 @@ function ctlCargos(el) {
       });
       await tentar(carregarClasses); rota(); return;
     }
-    const ex = e.target.closest('[data-excluir-cargo]');
-    if (ex) {
-      const c = cargoDe(ex.dataset.excluirCargo);
+    if (e.target.closest('[data-excluir-cargo]')) {
+      const c = cargoDe(tr.dataset.cargo);
       if (!confirm(`Excluir o cargo "${c.nome}"?`)) return;
       const ok = await tentar(async () => { const { error } = await sb.from('cargos').delete().eq('id', c.id); if (error) throw error; }, 'Cargo excluído');
       if (ok) { await tentar(carregarClasses); rota(); }
     }
+  };
+
+  el.querySelector('.matriz2').onchange = async e => {
+    const i = e.target; if (!i.dataset.perm) return;
+    const c = cargoDe(i.dataset.cargo);
+    const set = new Set(c.permissoes);
+    i.checked ? set.add(i.dataset.perm) : set.delete(i.dataset.perm);
+    const ok = await salvarCargo(c.id, { permissoes: [...set] }, 'Permissão atualizada');
+    if (!ok) i.checked = !i.checked;
+    else if (c.id === S.eu.cargo) atualizarNav();
   };
 
   const fc = $('#f-cargo');
@@ -1624,7 +1662,7 @@ function ctlCargos(el) {
     const ok = await tentar(async () => {
       const { error } = await sb.from('cargos').insert({
         id, nome: d.nome.trim(), ordem, limite: d.limite ? Number(d.limite) : null,
-        permissoes: ACESSOS.map(([k]) => k)
+        permissoes: ACESSOS.filter(([k]) => !['ver_painel_controle','ver_contatos','ver_avisos'].includes(k)).map(([k]) => k)
       });
       if (error) throw error;
     }, 'Cargo criado');
@@ -1803,27 +1841,94 @@ function ctlClasses(el) {
 }
 
 // ---------- registro ----------
+function baixarCSV(nome, linhas) {
+  const cel = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = '\ufeff' + linhas.map(l => l.map(cel).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const fmtCompleta = iso => new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(iso));
+
 async function ctlRegistro(el) {
+  const admin = isAdmin();
+  const aba = admin && S.abaRegistro === 'arquivo' ? 'arquivo' : 'atual';
   el.innerHTML = `<section class="bloco"><h3>Registro</h3><p class="muted" style="margin:0">Carregando…</p></section>`;
-  const { data, error } = await sb.from('registro').select('*').order('quando', { ascending: false }).limit(300);
+  const { data, error } = await sb.from(aba === 'arquivo' ? 'registro_arquivo' : 'registro')
+    .select('*').order('quando', { ascending: false }).limit(aba === 'arquivo' ? 3000 : 1000);
   if (!el.isConnected) return;
-  if (error) { el.innerHTML = `<section class="bloco"><p class="aviso erro">${esc(msgErro(error))}</p></section>`; return; }
+  if (error) { el.innerHTML = `<section class="bloco"><p class="aviso erro">${esc(/registro_arquivo/.test(error.message) ? 'O arquivo do registro ainda não existe. Rode o migracao-painel.sql no Supabase.' : msgErro(error))}</p></section>`; return; }
+
   el.innerHTML = `
   <section class="bloco">
-    <div class="cab" style="margin-bottom:.8rem"><h3>Registro</h3><span class="muted">últimas ${data.length} ações</span></div>
-    <input id="r-busca" type="search" placeholder="Filtrar por nick ou ação" aria-label="Filtrar registro" style="margin-bottom:1rem">
+    <div class="cab" style="margin-bottom:.6rem">
+      <h3>Registro</h3>
+      ${admin ? `<div class="chips" style="margin:0" role="group" aria-label="Qual registro">
+        <button type="button" data-aba="atual" aria-pressed="${aba === 'atual'}">Atual</button>
+        <button type="button" data-aba="arquivo" aria-pressed="${aba === 'arquivo'}">Arquivados</button></div>` : ''}
+      <div class="acoes"><button class="btn-sec" id="r-csv" ${data.length ? '' : 'disabled'}>Baixar planilha (CSV)</button></div>
+    </div>
+    <p class="muted" style="margin-top:0">${aba === 'arquivo'
+      ? `Ações que foram limpas do registro. Ficam guardadas aqui só para administradores. ${data.length} ${data.length === 1 ? 'ação' : 'ações'}.`
+      : `${data.length} ${data.length === 1 ? 'ação registrada' : 'ações registradas'}${data.length >= 1000 ? ' (mostrando as 1000 mais recentes)' : ''}.`}</p>
+    ${admin && aba === 'atual' ? `
+    <form id="f-limpar" class="form-linha limpar">
+      <label>Limpar registro<select name="dias">
+        <option value="7">Mais antigo que 7 dias</option>
+        <option value="30" selected>Mais antigo que 30 dias</option>
+        <option value="90">Mais antigo que 90 dias</option>
+        <option value="x">Mais antigo que… (escolher)</option>
+        <option value="0">Tudo</option>
+      </select></label>
+      <label id="l-dias" hidden>Dias<input name="n" type="number" min="1" max="3650" value="15"></label>
+      <button class="btn-sec perigo-borda" type="submit">Limpar e arquivar</button>
+    </form>` : ''}
+    <input id="r-busca" type="search" placeholder="Filtrar por nick ou ação" aria-label="Filtrar registro" style="margin:1rem 0">
     <ol class="registro" id="r-lista"></ol>
   </section>`;
+
+  let filtrados = data;
   const desenhar = () => {
     const q = $('#r-busca').value.trim().toLowerCase();
-    const l = data.filter(r => !q || (r.autor_nick || '').toLowerCase().includes(q) || r.descricao.toLowerCase().includes(q));
-    $('#r-lista').innerHTML = l.length ? l.map(r => `
-      <li><time datetime="${r.quando}">${fmtCurta(r.quando)}</time>
-      <span><b>${esc(r.autor_nick || 'Alguém')}</b> ${esc(r.descricao.charAt(0).toLowerCase() + r.descricao.slice(1))}</span></li>`).join('')
-      : '<li class="muted">Nenhuma ação registrada ainda.</li>';
+    filtrados = data.filter(r => !q || (r.autor_nick || '').toLowerCase().includes(q) || r.descricao.toLowerCase().includes(q));
+    $('#r-lista').innerHTML = filtrados.length ? filtrados.map(r => `
+      <li><time datetime="${r.quando}" title="${fmtCompleta(r.quando)}">${fmtCurta(r.quando)}</time>
+      <span><b>${esc(r.autor_nick || 'Alguém')}</b> ${esc(r.descricao.charAt(0).toLowerCase() + r.descricao.slice(1))}
+      ${aba === 'arquivo' ? `<small class="muted"> · arquivado em ${fmtCurta(r.arquivado_em)}</small>` : ''}</span></li>`).join('')
+      : `<li class="muted">${data.length ? 'Nada encontrado com esse filtro.' : (aba === 'arquivo' ? 'O arquivo está vazio.' : 'Nenhuma ação registrada ainda.')}</li>`;
   };
   $('#r-busca').oninput = desenhar;
   desenhar();
+
+  el.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { S.abaRegistro = b.dataset.aba; rota(); });
+  $('#r-csv').onclick = () => baixarCSV(`registro-${aba === 'arquivo' ? 'arquivado' : 'atual'}-${hojeISO()}.csv`,
+    [aba === 'arquivo' ? ['Data', 'Quem', 'Ação', 'Arquivado em'] : ['Data', 'Quem', 'Ação'],
+     ...filtrados.map(r => aba === 'arquivo'
+       ? [fmtCompleta(r.quando), r.autor_nick, r.descricao, fmtCompleta(r.arquivado_em)]
+       : [fmtCompleta(r.quando), r.autor_nick, r.descricao])]);
+
+  const fl = $('#f-limpar');
+  if (fl) {
+    const sel = fl.elements.dias;
+    sel.onchange = () => { $('#l-dias').hidden = sel.value !== 'x'; };
+    fl.onsubmit = async ev => {
+      ev.preventDefault();
+      const dias = sel.value === 'x' ? Number(fl.elements.n.value) : Number(sel.value);
+      if (sel.value === 'x' && !(dias >= 1)) return toast('Informe quantos dias.', true);
+      const qtd = dias === 0 ? data.length : data.filter(r => Date.now() - new Date(r.quando).getTime() > dias * 864e5).length;
+      if (!qtd) return toast('Não há ações nesse período para limpar.');
+      if (!confirm(`Limpar ${dias === 0 ? 'todo o registro' : `as ações com mais de ${dias} dias`} (${qtd} ${qtd === 1 ? 'ação' : 'ações'})?\n\nElas continuam guardadas em "Arquivados".`)) return;
+      let n = 0;
+      const ok = await tentar(async () => {
+        const { data: r, error } = await sb.rpc('arquivar_registro', { dias });
+        if (error) throw error;
+        n = r;
+      });
+      if (ok) { toast(`${n} ${n === 1 ? 'ação arquivada' : 'ações arquivadas'}`); rota(); }
+    };
+  }
 }
 
 // =====================================================================
